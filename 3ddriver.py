@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
-import os, sys
+import os, sys, platform
 from argparse import ArgumentParser
 import numpy as np
 import numpy.ma as ma
@@ -44,6 +44,8 @@ if __name__ == '__main__':
     parser.add_argument('--cmap', dest='cmap', help='colormap for topography',
                          default='gist_earth', choices=['gist_earth', 'gist_gray'])
     parser.add_argument('--traj','-t', dest='traj', help='file with trajectories', default=None)
+    parser.add_argument('--icb', dest='icb',action='store_true',
+                         help='treat as iceberg trajectories', default=False)
     parser.add_argument('--traj_numbers',dest='traj_numbers', type=int, nargs= 3, help='trajectory_numbers',
                          default=[None, None, None])
     parser.add_argument('--traj_cut',dest='traj_cut', type=int, help='last trajectory time level to read',
@@ -99,7 +101,7 @@ if __name__ == '__main__':
                      bottom = args.bottom, cmap = args.cmap, map2d = map2d, globe = args.globe)
 
     if args.traj is not None:
-        traj.do_trajectories(args.traj, args.traj_numbers, topo,
+        traj.do_trajectories(args.traj, args.traj_numbers, topo, icb=args.icb,
                         xs=xs, xe=xe, ys=ys, ye=ye,
                         traj_cut=args.traj_cut,
                         threshold_deg=args.threshold, passes=args.passes)
@@ -110,8 +112,16 @@ if __name__ == '__main__':
                         dirname=args.surf_dir, opacity=args.opacity)
 
     show()
-    print('peak memory usage is (MB)',
-            '\n self:',resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/(1024*1024),
-            '\n children:',resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss/(1024*1024)
-            )
+    if platform.system() == "Linux":
+      # Linux systems return memory in Kbytes
+      print('peak memory usage is (MB):',
+            ' self:',resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1024,
+            ' children:',resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss/1024
+            ,'\n')
+    else:
+      # Assumed MACOS type (Darwin) return in bytes
+      print('peak memory usage is (MB):',
+            ' self:',resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/(1024*1024),
+            ' children:',resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss/(1024*1024)
+            ,'\n')
 

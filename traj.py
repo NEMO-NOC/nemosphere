@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
-import os, sys
+import os, sys, platform
 from argparse import ArgumentParser
 import numpy as np
 import numpy.ma as ma
@@ -109,7 +109,7 @@ def dopict(traj):
     # new version slower for short trajectories for reasonable number of passes, but faster for long trajectories ...
     xyzs = quick_simplify(GetTraj.threshold, np.vstack([traj[var] for var in GetTraj.vars]).T.copy(),
                            passes=GetTraj.passes)
-    print('npts=', xyzs.shape[0], end = '  ')
+    #print('npts=', xyzs.shape[0], end = '  ')
     sys.stdout.flush()
     return xyzs
 
@@ -123,11 +123,12 @@ class GetTraj(object):
         """
         GetTraj.vars = ('lon','lat','depth') + vars
 
-    def __init__(self, pathname):
+    def __init__(self, pathname, icb=False):
         """
         Set name of trajectory file
         """
         self.pathname = pathname
+        self.icb = icb
 
     def __getitem__(self,slice):
         """
@@ -137,18 +138,43 @@ class GetTraj(object):
         with Dataset(self.pathname) as f:
             fv = f.variables
             self.traj = {}
-            for var in self.vars:
-                self.traj[var] = fv['traj_%s' % var][slice]
+            if self.icb:
+               for var in self.vars:
+                   if var != 'depth' :
+                    try:
+                      self.traj[var] = fv['%s' % var][slice]
+                    except:
+                      print(var,' not found in dataset.')
+                      print('If trajectories are not iceberg trajectories,')
+                      print('re-run without the --icb flag\n')
+                      sys.exit()
+               self.traj['depth'] = 1.0 + 0.0*self.traj['lon']
+            else:
+               for var in self.vars:
+                   try:
+                     self.traj[var] = fv['traj_%s' % var][slice]
+                   except:
+                     print('traj_'+var,' not found in dataset.')
+                     print('If trajectories are iceberg trajectories,')
+                     print('re-run with the --icb flag\n')
+                     sys.exit()
 
     def get_traj_list(self, killdict=True):
         """
         Create list of trajectories [[traj_1[lon], traj_1[lat], ...], [traj_2[lon],...], ....
         """
-        ltraj, ntraj = self.traj['lon'].shape
-        self.traj_list  = []
-        for l in range(ntraj):
-            self.traj_list.append({var:x[:,l] for var,x in
-                                   [(var,self.traj[var]) for var in GetTraj.vars]})
+        if self.icb:
+           ntraj, ltraj = self.traj['lon'].shape
+           self.traj_list  = []
+           for l in range(ntraj):
+               self.traj_list.append({var:x[l,:] for var,x in
+                                      [(var,self.traj[var]) for var in GetTraj.vars]})
+        else:
+           ltraj, ntraj = self.traj['lon'].shape
+           self.traj_list  = []
+           for l in range(ntraj):
+               self.traj_list.append({var:x[:,l] for var,x in
+                                      [(var,self.traj[var]) for var in GetTraj.vars]})
         if killdict: del self.traj
 
     def prepare_trajectories(self, proj = None, threshold_deg = 0.01, passes = 50):
@@ -164,6 +190,9 @@ class GetTraj(object):
         # loop over trajectories
         # set # of processes for parallel processing
         processes = max(cpu_count() - 2,1)
+        #processes = 1
+        if processes > 1 :
+           print('trajectory processing will use ',processes,' threads\n')
         sys.stdout.flush()
         if processes>1:
             # create processes workers
@@ -176,54 +205,54 @@ class GetTraj(object):
             xyzs_list = []
             for traj in self.traj_list:
                 xyzs_list.append( dopict(traj) )
-        print()
         del self.traj_list
         return xyzs_list
 
 
-def do_trajectories(traj, traj_numbers, topo,
+def do_trajectories(traj, traj_numbers, topo, icb,
                     xs=None, xe=None, ys=None, ye=None,
                     traj_cut=None,
                     threshold_deg=0.01, passes=50):
     t1 = time.time()
-    GetTraj.setvars('time')
-    gt = GetTraj(traj)
     nt0, nt1, dnt = traj_numbers
-    gt[:traj_cut, nt0:nt1:dnt]
+    if icb:
+       GetTraj.setvars('ttim')
+       gt = GetTraj(traj, icb=icb)
+       gt[nt0:nt1:dnt, :traj_cut]
+    else:
+       GetTraj.setvars('time')
+       gt = GetTraj(traj, icb=icb)
+       gt[:traj_cut, nt0:nt1:dnt]
     t1, t0 = time.time(), t1
-    print('time taken to read trajectories is', t1 - t0, ' s','\n')
+    print('%10.5f s taken to read trajectories\n' % (t1 - t0) )
 
     gt.get_traj_list()
     xyzs_list = gt.prepare_trajectories(proj=topo.proj, threshold_deg=threshold_deg,
                                          passes=passes)
+    endpts = []
+    endpts.append(0)
+    rlen = 0
+    ntrj = 0
+    for xyzs in xyzs_list:
+        rlen += xyzs.shape[0]
+        ntrj = ntrj + 1
+        endpts.append(rlen)
     xxtrac, yytrac, zztrac, sstrac  = np.concatenate(xyzs_list).T.copy()
     del xyzs_list
     t1, t0 = time.time(), t1
-    print('time taken to prepare trajectories is', t1 - t0, ' s','\n')
+    print('%10.5f s taken to prepare ' % (t1 - t0),ntrj,' trajectories\n')
 
-    endpts = []
-    endpts.append(0)
-    for i in range(xxtrac.shape[0]-1):
-        dx = xxtrac[i] - xxtrac[i+1]
-        dy = yytrac[i] - yytrac[i+1]
-        dx = np.fabs(dx)
-        dy = np.fabs(dy)
-        #if dx + dy >= args.maxjump:
-        if dx + dy >= 1.44E6:
-            endpts.append(i+1)
-
-    endpts.append(xxtrac.shape[0]-1)
-    print('\n', len(endpts), endpts)
+    #print('\n', len(endpts), endpts)
     connections = []
     ept = 0
-    for i in range(len(endpts)):
+    for i in range(1,len(endpts)):
         connections.append(np.c_[np.arange(ept, endpts[i] -2),
                                 np.arange(ept+1,endpts[i] -1 )])
         ept = endpts[i]
 
     del endpts
     t1, t0 = time.time(), t1
-    print('time taken to connect trajectories is', t1 - t0, ' s','\n')
+    print('%10.5f s taken to connect trajectories\n' % (t1 - t0) )
 
     pts = mlab.pipeline.scalar_scatter(xxtrac,yytrac,zztrac,sstrac)
     pts.mlab_source.dataset.lines = np.vstack(connections)
@@ -240,12 +269,19 @@ def do_trajectories(traj, traj_numbers, topo,
 
     # A view of the canyon
     t1, t0 = time.time(), t1
-    print('time taken to draw trajectories is', t1 - t0, ' s','\n')
-    # OS X gives usage in B;  need to change for Linux which gives kB
-    print('peak memory usage is (MB)',
-           '\n self:',resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/(1024*1024),
-           '\n children:',resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss/(1024*1024)
-           )
+    print('%10.5f s taken to draw trajectories\n' % (t1 - t0) )
+    if platform.system() == "Linux":
+      # Linux systems return memory in Kbytes
+      print('peak memory usage is (MB):',
+            ' self:',resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1024,
+            ' children:',resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss/1024
+            ,'\n')
+    else:
+      # Assumed MACOS type (Darwin) return in bytes
+      print('peak memory usage is (MB):',
+            ' self:',resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/(1024*1024),
+            ' children:',resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss/(1024*1024)
+            ,'\n')
     #mlab.show()
 
 if __name__ == '__main__':

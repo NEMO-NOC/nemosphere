@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
-import os
+import os, platform
 from argparse import ArgumentParser
 import numpy as np
 import time
@@ -152,7 +152,7 @@ class Topography(object):
             phi_f = f.variables['gphif'][...,ys:ye,xs:xe].squeeze()
 
         t1, t0 = time.time(), t1
-        print('time taken to read in data is', t1 - t0, ' s','\n')
+        print('%10.5f s taken to read in data\n' % (t1 - t0) )
 
         if globe:
             # Plug the South Pole if the bathymetry doesn't extend far enough
@@ -201,7 +201,7 @@ class Topography(object):
         dep = -zscale*dep.astype(np.float64)
 
         t1, t0 = time.time(), t1
-        print('time taken to scale & convert data to float64 is', t1 - t0, ' s','\n')
+        print('%10.5f s taken to scale & convert data to float64\n' % (t1 - t0) )
 
         # colors of flat steps are associated with their depth
         # reset color for land points to positive value, so land in uppermost color class
@@ -216,13 +216,13 @@ class Topography(object):
         # where triangles(k,1...3) contains indices relating to kth triangle
         triangles = np.arange(3*ntriangles).reshape(ntriangles,3)
         t1, t0 = time.time(), t1
-        print('time taken to calculate vertices is', t1 - t0, ' s','\n')
+        print('%10.5f s taken to calculate vertices\n' % (t1 - t0) )
 
         if globe:
             z /= zscale
             self.proj(x,y,z)
             t1, t0 = time.time(), t1
-            print('time taken to transform triangles onto sphere is', t1 - t0, ' s','\n')
+            print('%10.5f s taken to transform triangles onto sphere\n' % (t1 - t0) )
 
         #clear some memory; mayavi consumes a lot;)
         del dep
@@ -238,12 +238,20 @@ class Topography(object):
         # NoN_color = (0.3,0.05,0.05,1.0)
         columns.module_manager.scalar_lut_manager.lut.nan_color = NaN_color
         t1, t0 = time.time(), t1
-        print('time taken to setup topography plot', t1 - t0, ' s','\n')
+        print('%10.5f s taken to setup topography plot\n' % (t1 - t0) )
         # need handle to figure & mapping transformation
-        print('peak memory usage is (MB)',
-               '\n self:',resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/(1024*1024),
-               '\n children:',resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss/(1024*1024)
-               )
+        if platform.system() == "Linux":
+          # Linux systems return memory in Kbytes
+          print('peak memory usage is (MB):',
+                ' self:',resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/1024,
+                ' children:',resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss/1024
+                ,'\n')
+        else:
+          # Assumed MACOS type (Darwin) return in bytes
+          print('peak memory usage is (MB):',
+                ' self:',resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/(1024*1024),
+                ' children:',resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss/(1024*1024)
+                ,'\n')
         # self.columns = columns
 
     def map_proj(self, x, y, z):
