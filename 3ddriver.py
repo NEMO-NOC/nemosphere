@@ -14,6 +14,7 @@ from mayavi.mlab import show
 import lego5
 import traj
 import volume
+import dots
 
 if __name__ == '__main__':
     parser = ArgumentParser(description=
@@ -44,6 +45,7 @@ if __name__ == '__main__':
     parser.add_argument('--cmap', dest='cmap', help='colormap for topography',
                          default='gist_earth', choices=['gist_earth', 'gist_gray'])
     parser.add_argument('--traj','-t', dest='traj', help='file with trajectories', default=None)
+    parser.add_argument('--dots', dest='dots', help='file with trajectories to so dotplots', default=None)
     parser.add_argument('--icb', dest='icb',action='store_true',
                          help='treat as iceberg trajectories', default=False)
     parser.add_argument('--traj_numbers',dest='traj_numbers', type=int, nargs= 3, help='trajectory_numbers',
@@ -105,6 +107,9 @@ if __name__ == '__main__':
                         xs=xs, xe=xe, ys=ys, ye=ye,
                         traj_cut=args.traj_cut,
                         threshold_deg=args.threshold, passes=args.passes)
+
+    if args.dots is not None:
+        dots.do_dots(args.dots, args.traj_numbers, topo)
 
     if args.surf_file is not None:
         volume.do_vol(args.field, args.surf_file,args.levels,topo.proj,

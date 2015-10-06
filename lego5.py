@@ -227,6 +227,8 @@ class Topography(object):
         #clear some memory; mayavi consumes a lot;)
         del dep
 
+        self.cmap = cmap
+        self.vmin = zs_min
         fig = mlab.figure(size=(400, 320), bgcolor=(0.16, 0.28, 0.46))
         columns = mlab.triangular_mesh(x, y, z, triangles, colormap=cmap, scalars=t, vmin=zs_min)
 
