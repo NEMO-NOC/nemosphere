@@ -61,12 +61,21 @@ class GetTraj(object):
             for var in self.vars:
                 self.traj[var] = fv['traj_%s' % var][slice].compressed()
 
-    def prepare_dots(self, nt):
+    def get_variable(self,var, nt, stride=1):
+        """
+        Reads trajectories from file self.pathname for variables in self.vars
+        into dictionary self.traj['lon'], self.traj['lat'] ....
+        """
+        with Dataset(self.pathname) as f:
+            fv = f.variables
+            return fv['traj_%s' % var][nt,::stride].compressed()
+
+    def prepare_dots(self, nt, stride=1):
         """
         Masks, projects, and simplifies trajectories in self.traj_list
         Returns simplified trajectories as a list of npts x nvar arrays xyzs_list
         """
-        self[nt,::40]
+        self[nt,::stride]
 
         # loop over trajectories
         # set # of processes for parallel processing
@@ -89,10 +98,12 @@ class GetTraj(object):
 
 
 
-def do_dots(traj, traj_numbers, topo):
+def do_dots(traj, ntimes, topo, stride=40):
     t1 = time.time()
-    nt0, nt1, dnt = traj_numbers
-    ntimes = range(nt0, nt1, dnt)
+    if len(ntimes)==3:
+        nt0, nt1, dnt = ntimes
+        ntimes = range(nt0, nt1, dnt)
+
     GetTraj.setvars('time')
     gt = GetTraj(traj, topo.proj)
     t1, t0 = time.time(), t1
@@ -101,7 +112,8 @@ def do_dots(traj, traj_numbers, topo):
     flat = False
     for nt in ntimes:
         print('doing time level', nt)
-        x, y, z = gt.prepare_dots(nt)
+        x, y, z = gt.prepare_dots(nt, stride=stride)
+        zreal = gt.get_variable('depth', nt, stride=stride)
         if flat:
             s = np.zeros_like(x) + 1.0
             #print(x[-20:], y[-20:], z[-20:], s[-20:])
@@ -114,9 +126,18 @@ def do_dots(traj, traj_numbers, topo):
             # pts.mlab_source.dataset.point_data.vectors = topo.zscale*10*np.ones([n,3], dtype=z.dtype)
             # pts.mlab_source.dataset.point_data.scalars = z
             s = np.zeros_like(x) + 1.0
-            pts = mlab.quiver3d(x, y, z, s, s, s, scalars=z, mode='sphere', scale_factor=topo.zscale*100)#colormap = topo.cmap, vmin = topo.vmin, vmax=0.)
+            pts = mlab.quiver3d(x, y, z, s, s, s, scalars=zreal, mode='sphere', scale_factor=topo.zscale*60,vmin=-3000., vmax=-500.)#colormap = topo.cmap, vmin = topo.vmin, vmax=0.)
             pts.glyph.color_mode = 'color_by_scalar'
+# module_manager1 = engine.scenes[0].children[1].children[0]
+
+# module_manager1.scalar_lut_manager.data_range = array([-836767.608763 ,  -38901.3683721])
             pts.glyph.glyph_source.glyph_source.center = [0, 0, 0]
 
+            cbar = mlab.scalarbar(object=pts, title='Depth', nb_labels=6, label_fmt='%4.0f')
+            cbar.scalar_bar_representation.maximum_size = np.array([50000, 50000])
+            # cbar.scalar_bar_representation.position = [0.1, 0.9]
+            # cbar.scalar_bar_representation.position2 = [0.8, 0.05]
+            cbar.scalar_bar_representation.position = [0.3, 0.15]
+            cbar.scalar_bar_representation.position2 = [0.4, 0.05]
     t1, t0 = time.time(), t1
     print('%10.5f s taken to draw trajectories\n' % (t1 - t0) )
