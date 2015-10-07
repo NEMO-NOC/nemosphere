@@ -133,7 +133,8 @@ def wrap_lon(lon):
 class Topography(object):
     def __init__(self, xs=None, xe=None, ys=None, ye=None,
                      domain_dir='.', bathymetry_file='bathy_meter.nc', coordinate_file='coordinates.nc',
-                     bottom = 6000., cmap='gist_earth', map2d = None, globe = False, zs_rat = 0.1):
+                     bottom = 6000., cmap='gist_earth', map2d = None, globe = False, zs_rat = 0.1,
+                     size_in_pixels = (1000,800)):
         # xem1, yem1 = xe - 1, ye - 1
         xem1, yem1 = xe, ye
 
@@ -229,7 +230,7 @@ class Topography(object):
 
         self.cmap = cmap
         self.vmin = zs_min
-        fig = mlab.figure(size=(400, 320), bgcolor=(0.16, 0.28, 0.46))
+        fig = mlab.figure(size=size_in_pixels, bgcolor=(0.16, 0.28, 0.46))
         columns = mlab.triangular_mesh(x, y, z, triangles, colormap=cmap, scalars=t, vmin=zs_min)
 
         # Set color for NAN's (e.g. land)
