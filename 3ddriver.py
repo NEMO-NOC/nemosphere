@@ -9,7 +9,7 @@ import resource
 
 from netCDF4 import Dataset
 from mpl_toolkits.basemap import Basemap
-from mayavi.mlab import show
+from mayavi.mlab import show, view, gcf, savefig, options
 
 import lego5
 import traj
@@ -32,6 +32,10 @@ if __name__ == '__main__':
 
     parser.add_argument('--bathy',dest='bathymetry_file',help='bathymetry file if not bathy_meter.nc',
                         default='bathy_meter.nc')
+    parser.add_argument('--outfile','-o', dest='outfile',help='output file',
+                        default=None)
+    parser.add_argument('--no_display', dest='no_display',help='if set do not display window',
+                        action='store_true', default=False)
     parser.add_argument('--coords',dest='coordinate_file',help='coordinate file if not coordinates.nc or mesh_hgr.nc',
                         default='coordinates.nc')
     parser.add_argument('--domain','-d',dest='domain_dir',
@@ -45,11 +49,15 @@ if __name__ == '__main__':
     parser.add_argument('--cmap', dest='cmap', help='colormap for topography',
                          default='gist_earth', choices=['gist_earth', 'gist_gray'])
     parser.add_argument('--traj','-t', dest='traj', help='file with trajectories', default=None)
+    parser.add_argument('--size', dest='size_in_pixels', help='xsize & ysize of image (in pixels)', type=int, nargs=2,
+                        default=(1000,800))
     parser.add_argument('--dots', dest='dots', help='file with trajectories to so dotplots', default=None)
     parser.add_argument('--icb', dest='icb',action='store_true',
                          help='treat as iceberg trajectories', default=False)
     parser.add_argument('--traj_numbers',dest='traj_numbers', type=int, nargs= 3, help='trajectory_numbers',
                          default=[None, None, None])
+    parser.add_argument('--times',dest='times', type=int, nargs='*', help='output times',
+                         default=[-1])
     parser.add_argument('--traj_cut',dest='traj_cut', type=int, help='last trajectory time level to read',
                          default=None)
     parser.add_argument('--traj_threshold',dest='threshold', type=float,
@@ -96,11 +104,14 @@ if __name__ == '__main__':
         # N Polar stereographic
         map2d = Basemap(projection='npstere',boundinglat=10,lon_0=270,resolution='l')
 
+    # if args.no_display:
+    #     options.offscreen = True
 
     topo = lego5.Topography(xs=xs, xe=xe, ys=ys, ye=ye,
                      domain_dir=args.domain_dir, bathymetry_file=args.bathymetry_file,
                      coordinate_file= args.coordinate_file,
-                     bottom = args.bottom, cmap = args.cmap, map2d = map2d, globe = args.globe)
+                     bottom = args.bottom, cmap = args.cmap, map2d = map2d, globe = args.globe,
+                     size_in_pixels = args.size_in_pixels)
 
     if args.traj is not None:
         traj.do_trajectories(args.traj, args.traj_numbers, topo, icb=args.icb,
@@ -109,14 +120,26 @@ if __name__ == '__main__':
                         threshold_deg=args.threshold, passes=args.passes)
 
     if args.dots is not None:
-        dots.do_dots(args.dots, args.traj_numbers, topo)
+        dots.do_dots(args.dots, args.times, topo)
 
     if args.surf_file is not None:
         volume.do_vol(args.field, args.surf_file,args.levels,topo.proj,
                         xs=xs, xe=xe, ys=ys, ye=ye, domain_dir=args.domain_dir,
                         dirname=args.surf_dir, opacity=args.opacity)
 
-    show()
+    scene = gcf()
+    scene.scene.camera.position = [26061765.205169372, -4221645.3109468669, 11513670.945417598]
+    scene.scene.camera.focal_point = [16434449.20815997, 6627234.1068188809, -1408413.5745141534]
+    scene.scene.camera.view_angle = 30.0
+    scene.scene.camera.view_up = [-0.5263926738428919, 0.4160622373626518, 0.74148699756996095]
+    scene.scene.camera.clipping_range = [6874912.2407720806, 34807141.917231418]
+    scene.scene.camera.compute_view_plane_normal()
+
+    if args.outfile is not None:
+        savefig(figure=scene, filename=args.outfile, size=args.size_in_pixels)
+    if not args.no_display:
+        show()
+
     if platform.system() == "Linux":
       # Linux systems return memory in Kbytes
       print('peak memory usage is (MB):',
