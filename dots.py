@@ -15,8 +15,6 @@ from multiprocessing import Pool,cpu_count
 
 from mpl_toolkits.basemap import Basemap
 
-from lego5 import Topography
-
 def dopict(traj):
     """
     Interior function that masks, projects, and simplifies lth trajectory in
@@ -113,30 +111,18 @@ def do_dots(traj, ntimes, topo, stride=40):
     for nt in ntimes:
         print('doing time level', nt)
         x, y, z = gt.prepare_dots(nt, stride=stride)
+        s = np.zeros_like(x) + 1.
         zreal = gt.get_variable('depth', nt, stride=stride)
         if flat:
-            s = np.zeros_like(x) + 1.0
-            #print(x[-20:], y[-20:], z[-20:], s[-20:])
-            pts = mlab.points3d(x, y, z, s, scale_factor=topo.zscale*30, color=(1,1,1), opacity=0.7)
+            pts = mlab.points3d(x, y, z, s, scale_factor=topo.zscale*100, color=(1,1,1), opacity=0.7)
         else:
             n = len(x)
-            # pts = mlab.points3d(x, y, z, colormap = topo.cmap)#, colormap = topo.cmap, vmin = topo.vmin, vmax=0.)
-            # pts.glyph.scale_mode = 'scale_by_vector'
-            # pts.glyph.color_mode = 'color_by_scalar'
-            # pts.mlab_source.dataset.point_data.vectors = topo.zscale*10*np.ones([n,3], dtype=z.dtype)
-            # pts.mlab_source.dataset.point_data.scalars = z
-            s = np.zeros_like(x) + 1.0
-            pts = mlab.quiver3d(x, y, z, s, s, s, scalars=zreal, mode='sphere', scale_factor=topo.zscale*60,vmin=-3000., vmax=-500.)#colormap = topo.cmap, vmin = topo.vmin, vmax=0.)
+            pts = mlab.quiver3d(x, y, z, s, s, s, scalars=zreal, mode='sphere', scale_factor=topo.zscale*100, vmin=-3000., vmax=-500., opacity=1.)#colormap = topo.cmap, vmin = topo.vmin, vmax=0.)
             pts.glyph.color_mode = 'color_by_scalar'
-# module_manager1 = engine.scenes[0].children[1].children[0]
-
-# module_manager1.scalar_lut_manager.data_range = array([-836767.608763 ,  -38901.3683721])
             pts.glyph.glyph_source.glyph_source.center = [0, 0, 0]
 
             cbar = mlab.scalarbar(object=pts, title='Depth', nb_labels=6, label_fmt='%4.0f')
             cbar.scalar_bar_representation.maximum_size = np.array([50000, 50000])
-            # cbar.scalar_bar_representation.position = [0.1, 0.9]
-            # cbar.scalar_bar_representation.position2 = [0.8, 0.05]
             cbar.scalar_bar_representation.position = [0.3, 0.15]
             cbar.scalar_bar_representation.position2 = [0.4, 0.05]
     t1, t0 = time.time(), t1

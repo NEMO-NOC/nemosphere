@@ -70,6 +70,8 @@ if __name__ == '__main__':
     parser.add_argument('--opacity', dest='opacity', help='opacity for 3d surface plot', default=0.7)
     parser.add_argument('--levels', dest='levels', type=float, nargs= '*',
                          help='field levels for 3d surface plot', default=[0.])
+    parser.add_argument('--stride', dest='stride', type=int,
+                         help='every stride-th trajectory plotted', default=1)
     args = parser.parse_args()
 
     if args.bounds is None:
@@ -120,7 +122,7 @@ if __name__ == '__main__':
                         threshold_deg=args.threshold, passes=args.passes)
 
     if args.dots is not None:
-        dots.do_dots(args.dots, args.times, topo)
+        dots.do_dots(args.dots, args.times, topo, stride=args.stride)
 
     if args.surf_file is not None:
         volume.do_vol(args.field, args.surf_file,args.levels,topo.proj,
@@ -136,6 +138,10 @@ if __name__ == '__main__':
     scene.scene.camera.compute_view_plane_normal()
 
     if args.outfile is not None:
+        # if options.offscreen == True:
+        #     options.offscreen = False
+
+        #scene.scene.save_png(args.outfile)
         savefig(figure=scene, filename=args.outfile, size=args.size_in_pixels)
     if not args.no_display:
         show()
