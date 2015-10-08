@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
-import os, platform
+import os, sys, platform
 from argparse import ArgumentParser
 import numpy as np
 import time
@@ -140,6 +140,8 @@ class Topography(object):
 
         t1 = time.time()
         pathname = os.path.join(domain_dir,bathymetry_file)
+        if not os.path.exists(pathname):
+            sys.exit('cannot find %s' % pathname)
         with Dataset(pathname) as f:
             # print(f.variables.keys())
             dep = f.variables['Bathymetry'][ys:ye,xs:xe]
@@ -147,6 +149,10 @@ class Topography(object):
         pathname = os.path.join(domain_dir,coordinate_file)
         if not os.path.exists(pathname):
             pathname = os.path.join(domain_dir,'mesh_hgr.nc')
+        if not os.path.exists(pathname):
+            pathname = os.path.join(domain_dir,'allmeshes.nc')
+        if not os.path.exists(pathname):
+            sys.exit('cannot find %s' % pathname)
         with Dataset(pathname) as f:
             # print(f.variables.keys())
             lambda_f = f.variables['glamf'][...,ys:ye,xs:xe].squeeze()
