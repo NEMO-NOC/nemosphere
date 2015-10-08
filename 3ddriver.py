@@ -50,7 +50,7 @@ if __name__ == '__main__':
                          default='gist_earth', choices=['gist_earth', 'gist_gray'])
     parser.add_argument('--traj','-t', dest='traj', help='file with trajectories', default=None)
     parser.add_argument('--size', dest='size_in_pixels', help='xsize & ysize of image (in pixels)', type=int, nargs=2,
-                        default=(1000,800))
+                        default=(1024,768))
     parser.add_argument('--dots', dest='dots', help='file with trajectories to so dotplots', default=None)
     parser.add_argument('--icb', dest='icb',action='store_true',
                          help='treat as iceberg trajectories', default=False)
