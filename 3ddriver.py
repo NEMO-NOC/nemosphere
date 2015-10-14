@@ -71,6 +71,7 @@ if __name__ == '__main__':
     parser.add_argument('--surf_dir', dest='surf_dir', help='directory with surf_file', default='.')
     parser.add_argument('--field','-f', dest='field', help='field for 3d surface plot', default='votemper')
     parser.add_argument('--opacity', dest='opacity', help='opacity for 3d surface plot', default=0.7)
+    parser.add_argument('--camera', dest='camera', help='specify camera angles', default=None)
     parser.add_argument('--levels', dest='levels', type=float, nargs= '*',
                          help='field levels for 3d surface plot', default=[0.])
     parser.add_argument('--stride', dest='stride', type=int,
@@ -133,12 +134,14 @@ if __name__ == '__main__':
                         dirname=args.surf_dir, opacity=args.opacity)
 
     scene = gcf()
-    scene.scene.camera.position = [26061765.205169372, -4221645.3109468669, 11513670.945417598]
-    scene.scene.camera.focal_point = [16434449.20815997, 6627234.1068188809, -1408413.5745141534]
-    scene.scene.camera.view_angle = 30.0
-    scene.scene.camera.view_up = [-0.5263926738428919, 0.4160622373626518, 0.74148699756996095]
-    scene.scene.camera.clipping_range = [6874912.2407720806, 34807141.917231418]
-    scene.scene.camera.compute_view_plane_normal()
+
+    if args.camera is not None:
+        scene.scene.camera.position = [26061765.205169372, -4221645.3109468669, 11513670.945417598]
+        scene.scene.camera.focal_point = [16434449.20815997, 6627234.1068188809, -1408413.5745141534]
+        scene.scene.camera.view_angle = 30.0
+        scene.scene.camera.view_up = [-0.5263926738428919, 0.4160622373626518, 0.74148699756996095]
+        scene.scene.camera.clipping_range = [6874912.2407720806, 34807141.917231418]
+        scene.scene.camera.compute_view_plane_normal()
 
     if args.outfile is not None:
         if args.no_display:
