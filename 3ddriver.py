@@ -11,6 +11,9 @@ from netCDF4 import Dataset
 from mpl_toolkits.basemap import Basemap
 from mayavi.mlab import show, view, gcf, savefig, options
 
+from tvtk.api import tvtk
+from tvtk.common import configure_input_data
+
 import lego5
 import traj
 import volume
@@ -106,8 +109,8 @@ if __name__ == '__main__':
         # N Polar stereographic
         map2d = Basemap(projection='npstere',boundinglat=10,lon_0=270,resolution='l')
 
-    # if args.no_display:
-    #     options.offscreen = True
+    if args.no_display:
+        options.offscreen = True
 
     topo = lego5.Topography(xs=xs, xe=xe, ys=ys, ye=ye,
                      domain_dir=args.domain_dir, bathymetry_file=args.bathymetry_file,
@@ -138,11 +141,38 @@ if __name__ == '__main__':
     scene.scene.camera.compute_view_plane_normal()
 
     if args.outfile is not None:
-        # if options.offscreen == True:
-        #     options.offscreen = False
+        if args.no_display:
+            actors = scene.scene._renderer._get_actors()
 
-        #scene.scene.save_png(args.outfile)
-        savefig(figure=scene, filename=args.outfile, size=args.size_in_pixels)
+            ren = tvtk.Renderer(background=scene.scene._renderer.background)
+
+            for actor in actors:
+                ren.add_actor(actor)
+
+            ren.reset_camera()
+            camera = ren._get_active_camera()
+            oldcamera = scene.scene._renderer._get_active_camera()
+            camera.position = oldcamera.position
+            camera.focal_point = oldcamera.focal_point
+            camera.view_angle = oldcamera.view_angle
+            camera.view_up = oldcamera.view_up
+            camera.clipping_range = oldcamera.clipping_range
+            camera.compute_view_plane_normal()
+
+            rw = tvtk.RenderWindow(size=args.size_in_pixels)
+            rw.off_screen_rendering=1
+            rw.add_renderer(ren)
+
+            w2if = tvtk.WindowToImageFilter()
+            w2if.magnification = scene.scene.magnification
+            w2if.input = rw
+            ex = tvtk.PNGWriter()
+            ex.file_name = args.outfile
+            configure_input_data(ex, w2if.output)
+            w2if.update()
+            ex.write()
+        else:
+            savefig(figure=scene, filename=args.outfile, size=args.size_in_pixels)
     if not args.no_display:
         show()
 
@@ -158,4 +188,3 @@ if __name__ == '__main__':
             ' self:',resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/(1024*1024),
             ' children:',resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss/(1024*1024)
             ,'\n')
-
