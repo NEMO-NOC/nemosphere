@@ -133,7 +133,7 @@ def wrap_lon(lon):
 class Topography(object):
     def __init__(self, xs=None, xe=None, ys=None, ye=None,
                      domain_dir='.', bathymetry_file='bathy_meter.nc', coordinate_file='coordinates.nc',
-                     bottom = 6000., cmap='gist_earth', map2d = None, globe = False, zs_rat = 0.1,
+                     bottom = 6000., cmap='gist_earth', topo_cbar=False, map2d = None, globe = False, zs_rat = 0.1,
                      size_in_pixels = (1000,800)):
         # xem1, yem1 = xe - 1, ye - 1
         xem1, yem1 = xe, ye
@@ -246,8 +246,22 @@ class Topography(object):
         # dark red/brown
         # NoN_color = (0.3,0.05,0.05,1.0)
         columns.module_manager.scalar_lut_manager.lut.nan_color = NaN_color
+
+        if topo_cbar:
+            xd, yd, zd = [coordinate[:1].copy() for coordinate in (x,y,z)]
+            sd = [0.]
+            dummy = mlab.points3d(xd, yd, zd, sd, scale_factor=0.0001,
+                                   colormap = self.cmap, vmin=-6000., vmax=-0)
+            dummy.glyph.color_mode = 'color_by_scalar'
+            dummy.glyph.glyph_source.glyph_source.center = [0, 0, 0]
+            cbar = mlab.scalarbar(object=dummy, title='Bottom Depth', nb_labels=6, label_fmt='%4.0f')
+            cbar.scalar_bar_representation.maximum_size = np.array([50000, 50000])
+            cbar.scalar_bar_representation.position = [0.3, 0.15]
+            cbar.scalar_bar_representation.position2 = [0.4, 0.05]
         t1, t0 = time.time(), t1
         print('%10.5f s taken to setup topography plot\n' % (t1 - t0) )
+
+
         # need handle to figure & mapping transformation
         if platform.system() == "Linux":
           # Linux systems return memory in Kbytes
@@ -299,6 +313,8 @@ if __name__ == '__main__':
                         default=6000.)
     parser.add_argument('--globe','-g', dest='globe',action='store_true',
                          help='do globe', default=False)
+    parser.add_argument('--topo_cbar', dest='topo_cbar',action='store_true',
+                         help='draw topography colorbar', default=False)
     args = parser.parse_args()
 
     if args.bounds is None:
@@ -337,7 +353,7 @@ if __name__ == '__main__':
     topo = Topography(xs=xs, xe=xe, ys=ys, ye=ye,
                         domain_dir=args.domain_dir, bathymetry_file=args.bathymetry_file,
                         coordinate_file= args.coordinate_file,
-                        bottom = args.bottom, map2d = map, globe = args.globe)
+                        bottom = args.bottom, map2d = map, globe = args.globe, topo_cbar = args.topo_cbar)
 
 
     mlab.show()

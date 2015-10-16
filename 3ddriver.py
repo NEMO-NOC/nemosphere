@@ -76,6 +76,10 @@ if __name__ == '__main__':
                          help='field levels for 3d surface plot', default=[0.])
     parser.add_argument('--stride', dest='stride', type=int,
                          help='every stride-th trajectory plotted', default=1)
+    parser.add_argument('--topo_cbar', dest='topo_cbar',action='store_true',
+                         help='draw topography colorbar', default=False)
+    parser.add_argument('--white_dots', dest='white_dots',action='store_true',
+                         help='all dots are white', default=False)
     args = parser.parse_args()
 
     if args.bounds is None:
@@ -117,7 +121,7 @@ if __name__ == '__main__':
                      domain_dir=args.domain_dir, bathymetry_file=args.bathymetry_file,
                      coordinate_file= args.coordinate_file,
                      bottom = args.bottom, cmap = args.cmap, map2d = map2d, globe = args.globe,
-                     size_in_pixels = args.size_in_pixels)
+                     topo_cbar=args.topo_cbar, size_in_pixels = args.size_in_pixels)
 
     if args.traj is not None:
         traj.do_trajectories(args.traj, args.traj_numbers, topo, icb=args.icb,
@@ -126,7 +130,7 @@ if __name__ == '__main__':
                         threshold_deg=args.threshold, passes=args.passes)
 
     if args.dots is not None:
-        dots.do_dots(args.dots, args.times, topo, stride=args.stride)
+        dots.do_dots(args.dots, args.times, topo, stride=args.stride, white_dots=args.white_dots)
 
     if args.surf_file is not None:
         volume.do_vol(args.field, args.surf_file,args.levels,topo.proj,

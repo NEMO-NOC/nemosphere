@@ -96,7 +96,7 @@ class GetTraj(object):
 
 
 
-def do_dots(traj, ntimes, topo, stride=40):
+def do_dots(traj, ntimes, topo, stride=40, white_dots=False):
     t1 = time.time()
     if len(ntimes)==3:
         nt0, nt1, dnt = ntimes
@@ -107,17 +107,17 @@ def do_dots(traj, ntimes, topo, stride=40):
     t1, t0 = time.time(), t1
     print('%10.5f s taken to read trajectories\n' % (t1 - t0) )
 
-    flat = False
     for nt in ntimes:
         print('doing time level', nt)
         x, y, z = gt.prepare_dots(nt, stride=stride)
         s = np.zeros_like(x) + 1.
         zreal = gt.get_variable('depth', nt, stride=stride)
-        if flat:
-            pts = mlab.points3d(x, y, z, s, scale_factor=topo.zscale*100, color=(1,1,1), opacity=0.7)
+        if white_dots:
+            pts = mlab.points3d(x, y, z, s, scale_factor=topo.zscale*100, color=(1,1,1), opacity=1.)
         else:
             n = len(x)
-            pts = mlab.quiver3d(x, y, z, s, s, s, scalars=zreal, mode='sphere', scale_factor=topo.zscale*100, vmin=-3000., vmax=-500., opacity=1.)#colormap = topo.cmap, vmin = topo.vmin, vmax=0.)
+            pts = mlab.quiver3d(x, y, z, s, s, s, scalars=zreal, mode='sphere', scale_factor=topo.zscale*100,
+                                 vmin=-3000., vmax=-500., opacity=1.)#colormap = topo.cmap, vmin = topo.vmin, vmax=0.)
             pts.glyph.color_mode = 'color_by_scalar'
             pts.glyph.glyph_source.glyph_source.center = [0, 0, 0]
 
