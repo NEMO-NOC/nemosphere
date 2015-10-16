@@ -146,36 +146,10 @@ if __name__ == '__main__':
     if args.outfile is not None:
         if args.no_display:
 
-            ren = tvtk.Renderer(background=scene.scene._renderer.background)
+            ren = scene.scene._renderer
 
-            #copy actors from scene renderer to new renderer
-            actors = scene.scene._renderer._get_actors()
-            actors2d = scene.scene._renderer._get_actors2d()
-
-            for actor in actors:
-                ren.add_actor(actor)
-
-            for actor2d in actors2d:
-                ren.add_actor2d(actor2d)
-
-            #copy lights
-            lights = scene.scene._renderer._get_lights()
-            ren.set_light_collection(lights)
-
-            #copy camera settings
-            ren.reset_camera()
-            camera = ren._get_active_camera()
-            oldcamera = scene.scene._renderer._get_active_camera()
-            camera.position = oldcamera.position
-            camera.focal_point = oldcamera.focal_point
-            camera.view_angle = oldcamera.view_angle
-            camera.view_up = oldcamera.view_up
-            camera.clipping_range = oldcamera.clipping_range
-            camera.compute_view_plane_normal()
-
-            #create new off screen renderwindow for new renderer
-            rw = tvtk.RenderWindow(size=args.size_in_pixels)
-            rw.off_screen_rendering=1
+            #create new off screen renderwindow
+            rw = tvtk.RenderWindow(size=args.size_in_pixels, off_screen_rendering=1)
             rw.add_renderer(ren)
 
             #antialiasing
