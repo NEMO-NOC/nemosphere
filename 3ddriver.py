@@ -2,6 +2,10 @@
 from __future__ import print_function
 import os, sys, platform
 from argparse import ArgumentParser
+try:
+    import configparser
+except:
+    import ConfigParser as configparser
 import numpy as np
 import numpy.ma as ma
 import time
@@ -18,6 +22,14 @@ import lego5
 import traj
 import volume
 import dots
+
+
+class JsonConfigParser(configparser.ConfigParser):
+    """
+    Add extra method to ConfigParser to read lists using json module
+    """
+    def getjson(self,*args):
+        return json.loads(self.get(*args))
 
 if __name__ == '__main__':
     parser = ArgumentParser(description=
@@ -140,11 +152,13 @@ if __name__ == '__main__':
     scene = gcf()
 
     if args.camera is not None:
-        scene.scene.camera.position = [26061765.205169372, -4221645.3109468669, 11513670.945417598]
-        scene.scene.camera.focal_point = [16434449.20815997, 6627234.1068188809, -1408413.5745141534]
-        scene.scene.camera.view_angle = 30.0
-        scene.scene.camera.view_up = [-0.5263926738428919, 0.4160622373626518, 0.74148699756996095]
-        scene.scene.camera.clipping_range = [6874912.2407720806, 34807141.917231418]
+        config = JsonConfigParser()
+        config.read(args.camera)
+        scene.scene.camera.position = config.getjson('camera', 'position')
+        scene.scene.camera.focal_point = config.getjson('camera', 'focal_point')
+        scene.scene.camera.view_angle = config.getjson('camera', 'angle')
+        scene.scene.camera.view_up = config.getjson('camera', 'view_up')
+        scene.scene.camera.clipping_range = config.getjson('camera', 'clipping_range')
         scene.scene.camera.compute_view_plane_normal()
 
     if args.outfile is not None:
