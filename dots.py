@@ -57,7 +57,11 @@ class GetTraj(object):
             fv = f.variables
             self.traj = {}
             for var in self.vars:
-                self.traj[var] = fv['traj_%s' % var][slice].compressed()
+                # This is kludge; may need reworking
+                try:
+                    self.traj[var] = fv['traj_%s' % var][slice].compressed()
+                except:
+                    self.traj[var] = fv['traj_%s' % var][slice]
 
     def get_variable(self,var, nt, stride=1):
         """
@@ -66,7 +70,11 @@ class GetTraj(object):
         """
         with Dataset(self.pathname) as f:
             fv = f.variables
-            return fv['traj_%s' % var][nt,::stride].compressed()
+            # This is kludge; may need reworking
+            try:
+                return fv['traj_%s' % var][nt,::stride].compressed()
+            except:
+                return fv['traj_%s' % var][nt,::stride]
 
     def prepare_dots(self, nt, stride=1):
         """
