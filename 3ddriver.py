@@ -6,6 +6,7 @@ try:
     import configparser
 except:
     import ConfigParser as configparser
+import json
 import numpy as np
 import numpy.ma as ma
 import time
@@ -156,7 +157,7 @@ if __name__ == '__main__':
         config.read(args.camera)
         scene.scene.camera.position = config.getjson('camera', 'position')
         scene.scene.camera.focal_point = config.getjson('camera', 'focal_point')
-        scene.scene.camera.view_angle = config.getjson('camera', 'angle')
+        scene.scene.camera.view_angle = config.getjson('camera', 'view_angle')
         scene.scene.camera.view_up = config.getjson('camera', 'view_up')
         scene.scene.camera.clipping_range = config.getjson('camera', 'clipping_range')
         scene.scene.camera.compute_view_plane_normal()
