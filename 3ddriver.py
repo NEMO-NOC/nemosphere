@@ -2,10 +2,6 @@
 from __future__ import print_function
 import os, sys, platform
 from argparse import ArgumentParser
-try:
-    import configparser
-except:
-    import ConfigParser as configparser
 import json
 import numpy as np
 import numpy.ma as ma
@@ -24,13 +20,6 @@ import traj
 import volume
 import dots
 
-
-class JsonConfigParser(configparser.ConfigParser):
-    """
-    Add extra method to ConfigParser to read lists using json module
-    """
-    def getjson(self,*args):
-        return json.loads(self.get(*args))
 
 if __name__ == '__main__':
     parser = ArgumentParser(description=
@@ -153,14 +142,27 @@ if __name__ == '__main__':
     scene = gcf()
 
     if args.camera is not None:
-        config = JsonConfigParser()
-        config.read(args.camera)
-        scene.scene.camera.position = config.getjson('camera', 'position')
-        scene.scene.camera.focal_point = config.getjson('camera', 'focal_point')
-        scene.scene.camera.view_angle = config.getjson('camera', 'view_angle')
-        scene.scene.camera.view_up = config.getjson('camera', 'view_up')
-        scene.scene.camera.clipping_range = config.getjson('camera', 'clipping_range')
-        scene.scene.camera.compute_view_plane_normal()
+        json_file = open(args.camera)
+        camera_array = json.load(json_file)
+        json_file.close()
+
+        num_times = len(camera_array)
+        if num_times > 1:
+            pass
+            #interpolate
+        elif num_times == 1:
+            if camera_array[0].get('camera') is not None:
+                camera = camera_array[0]['camera']
+                #check that the file is valid
+                scene.scene.camera.position = camera['position']
+                scene.scene.camera.focal_point = camera['focal_point']
+                scene.scene.camera.view_angle = camera['view_angle']
+                scene.scene.camera.view_up = camera['view_up']
+                scene.scene.camera.clipping_range = camera['clipping_range']
+                scene.scene.camera.compute_view_plane_normal()
+        else:
+            #bad file
+            pass
 
     if args.outfile is not None:
         if args.no_display:
