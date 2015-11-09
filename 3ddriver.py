@@ -7,6 +7,8 @@ import numpy as np
 import numpy.ma as ma
 import time
 import resource
+from numbers import Number
+from scipy.interpolate import Akima1DInterpolator
 
 from netCDF4 import Dataset
 from mpl_toolkits.basemap import Basemap
@@ -20,6 +22,62 @@ import traj
 import volume
 import dots
 
+
+class CameraPoint(object):
+    def __init__(self):
+        pass
+
+    def set_from_json_camera(self, camera):
+        self.position = camera['position']
+        self.focal_point = camera['focal_point']
+        self.view_angle = camera['view_angle']
+        self.view_up = camera['view_up']
+        self.clipping_range = camera['clipping_range']
+        #check that arguments are valid
+        if not isinstance(self.position, list) or len(self.position) != 3:
+            sys.exit('Bad camera position')
+        if not isinstance(self.focal_point, list) or len(self.focal_point) != 3:
+            sys.exit('Bad focal point')
+        if not isinstance(self.view_angle, Number):
+            sys.exit('Bad view angle')
+        if not isinstance(self.view_up, list) or len(self.view_up) != 3:
+            sys.exit('Bad up vector')
+        if not isinstance(self.clipping_range, list) or len(self.clipping_range) != 2:
+            sys.exit('Bad clipping range')
+
+class CameraInterpolator(object):
+    def __init__(self, cameras, times):
+        num_times = len(times)
+        positions = np.empty([num_times,3])
+        focal_points = np.empty([num_times,3])
+        view_angles = np.empty([num_times])
+        view_ups = np.empty([num_times,3])
+        clipping_ranges = np.empty([num_times,2])
+        for i in range(num_times):
+            positions[i] = cameras[i].position
+            focal_points[i] = cameras[i].focal_point
+            view_angles[i] = cameras[i].view_angle
+            view_ups[i] = cameras[i].view_up
+            clipping_ranges[i] = cameras[i].clipping_range
+
+        self.position = [Akima1DInterpolator(times, positions[i,0]) for i in range(3)]
+        self.focal_point = [Akima1DInterpolator(times, focal_points[i,0]) for i in range(3)]
+        self.view_angle = Akima1DInterpolator(times, view_angles)
+        #temporary linear then normalised up vector interpolation
+        self.view_up = [Akima1DInterpolator(times, view_ups[i,0]) for i in range(3)]
+        self.clipping_range = [Akima1DInterpolator(times, clipping_ranges[i,0]) for i in range(2)]
+
+    def camera_for_time(self, time):
+        camera = CameraPoint()
+        camera.position = [self.position[i](time) for i in range(3)]
+        camera.focal_point = [self.focal_point[i](time) for i in range(3)]
+        camera.view_angle = self.view_angle(time)
+        #up vector needs to be normalised as is a unit vector
+        camera.view_up = [self.view_up[i](time) for i in range(3)]
+        up_norm = np.sqrt(camera.view_up[0]**2 + camera.view_up[1]**2 + camera.view_up[2]**2)
+        camera.view_up = np.array(camera.view_up)/up_norm
+        camera.clipping_range = [self.clipping_range[i](time) for i in range(3)]
+        return camera
 
 if __name__ == '__main__':
     parser = ArgumentParser(description=
@@ -148,21 +206,26 @@ if __name__ == '__main__':
 
         num_times = len(camera_array)
         if num_times > 1:
-            pass
-            #interpolate
+            for i in range(num_times):
+                cameras[i] = CameraPoint()
+                cameras[i].set_from_json_camera(camera_array[i]['camera'])
+                times[i] = camera_array[i]['time']
+            camera_interpolator = CameraInterpolator(cameras,times)
+            camera = camera_interpolator.camera_for_time(args.times[0])
         elif num_times == 1:
+            #check that the file is valid
             if camera_array[0].get('camera') is not None:
-                camera = camera_array[0]['camera']
-                #check that the file is valid
-                scene.scene.camera.position = camera['position']
-                scene.scene.camera.focal_point = camera['focal_point']
-                scene.scene.camera.view_angle = camera['view_angle']
-                scene.scene.camera.view_up = camera['view_up']
-                scene.scene.camera.clipping_range = camera['clipping_range']
-                scene.scene.camera.compute_view_plane_normal()
+                camera = CameraPoint()
+                camera.set_from_json_camera(camera_array[0]['camera'])
         else:
-            #bad file
-            pass
+            sys.exit('Bad camera file')
+
+        scene.scene.camera.position = camera.position
+        scene.scene.camera.focal_point = camera.focal_point
+        scene.scene.camera.view_angle = camera.view_angle
+        scene.scene.camera.view_up = camera.view_up
+        scene.scene.camera.clipping_range = camera.clipping_range
+        scene.scene.camera.compute_view_plane_normal()
 
     if args.outfile is not None:
         if args.no_display:
