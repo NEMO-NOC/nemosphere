@@ -32,7 +32,7 @@ class JsonConfigParser(configparser.ConfigParser):
     def getjson(self,*args):
         return json.loads(self.get(*args))
 
-if __name__ == '__main__':
+def main():
     parser = ArgumentParser(description=
     """
     produce lego-block topography & optionally trajectories and/or volumes
@@ -200,3 +200,7 @@ if __name__ == '__main__':
             ' self:',resource.getrusage(resource.RUSAGE_SELF).ru_maxrss/(1024*1024),
             ' children:',resource.getrusage(resource.RUSAGE_CHILDREN).ru_maxrss/(1024*1024)
             ,'\n')
+
+if __name__ == '__main__':
+    main()
+
