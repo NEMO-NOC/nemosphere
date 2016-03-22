@@ -1,0 +1,20 @@
+#-*-shell-script-*-
+# Lines starting with '#' are considered comments.
+# Ignore strange files
+._*
+# Ignore autosave files
+.#*
+# except foo.html which is maintained by hand.
+#!foo.html
+# Ignore  .DS_Store
+.DS_Store
+# Ignore compiled python & python 3
+*.pyc
+__pycache__
+# Ignore ~ files
+~*
+# Ignore  _build subdirectory
+_build
+# Ignore html readme
+README.html
+
