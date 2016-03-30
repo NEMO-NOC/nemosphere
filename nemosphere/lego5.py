@@ -129,6 +129,14 @@ def wrap_lon(lon):
     # Need [] to ensure lon is changed in-place instead of making new variable
     lon[...] = (lon[...] + 180.) % 360. - 180.
 
+def find_domain_file(domain_dir, file_list):
+    for filename in file_list:
+        pathname = os.path.join(domain_dir,filename)
+        if os.path.exists(pathname):
+            return pathname
+    else:
+        sys.exit('cannot find any of %s in %s' % (' '.join(file_list), domain_dir ))
+
 
 class Topography(object):
     def __init__(self, xs=None, xe=None, ys=None, ye=None,

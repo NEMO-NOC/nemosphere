@@ -53,7 +53,7 @@ def main():
     parser.add_argument('--no_display', dest='no_display',help='if set do not display window',
                         action='store_true', default=False)
     parser.add_argument('--coords',dest='coordinate_file',help='coordinate file if not coordinates.nc or mesh_hgr.nc',
-                        default='coordinates.nc')
+                        default='allmeshes.nc')
     parser.add_argument('--domain','-d',dest='domain_dir',
                         help='directory of bathymetry & coordinates',
                         default='./')
@@ -147,6 +147,7 @@ def main():
 
     if args.surf_file is not None:
         volume.do_vol(args.field, args.surf_file,args.levels,topo.proj,
+                        coordinate_file= args.coordinate_file,
                         xs=xs, xe=xe, ys=ys, ye=ye, domain_dir=args.domain_dir,
                         dirname=args.surf_dir, opacity=args.opacity)
 
