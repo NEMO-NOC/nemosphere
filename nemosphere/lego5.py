@@ -147,20 +147,12 @@ class Topography(object):
         xem1, yem1 = xe, ye
 
         t1 = time.time()
-        pathname = os.path.join(domain_dir,bathymetry_file)
-        if not os.path.exists(pathname):
-            sys.exit('cannot find %s' % pathname)
+        pathname = find_domain_file(domain_dir,[bathymetry_file, 'allmeshes.nc'])
         with Dataset(pathname) as f:
             # print(f.variables.keys())
             dep = f.variables['Bathymetry'][ys:ye,xs:xe]
 
-        pathname = os.path.join(domain_dir,coordinate_file)
-        if not os.path.exists(pathname):
-            pathname = os.path.join(domain_dir,'mesh_hgr.nc')
-        if not os.path.exists(pathname):
-            pathname = os.path.join(domain_dir,'allmeshes.nc')
-        if not os.path.exists(pathname):
-            sys.exit('cannot find %s' % pathname)
+        pathname = find_domain_file(domain_dir,['mesh_hgr.nc', 'allmeshes.nc', coordinate_file])
         with Dataset(pathname) as f:
             # print(f.variables.keys())
             lambda_f = f.variables['glamf'][...,ys:ye,xs:xe].squeeze()

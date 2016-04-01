@@ -132,7 +132,7 @@ def main():
 
     topo = lego5.Topography(xs=xs, xe=xe, ys=ys, ye=ye,
                      domain_dir=args.domain_dir, bathymetry_file=args.bathymetry_file,
-                     coordinate_file= args.coordinate_file,
+                     coordinate_file = args.coordinate_file,
                      bottom = args.bottom, cmap = args.cmap, map2d = map2d, globe = args.globe,
                      topo_cbar=args.topo_cbar, size_in_pixels = args.size_in_pixels)
 
@@ -147,7 +147,7 @@ def main():
 
     if args.surf_file is not None:
         volume.do_vol(args.field, args.surf_file,args.levels,topo.proj,
-                        coordinate_file= args.coordinate_file,
+                        coordinate_file = args.coordinate_file,
                         xs=xs, xe=xe, ys=ys, ye=ye, domain_dir=args.domain_dir,
                         dirname=args.surf_dir, opacity=args.opacity)
 

@@ -11,8 +11,11 @@ from multiprocessing import Pool,cpu_count
 from skimage.measure import marching_cubes
 from netCDF4 import Dataset
 import time
+import warnings
 
 from mayavi import mlab
+
+from lego5 import find_domain_file
 
 
 @jit('f8(f8, f8, f8, f8, f8, f8, f8, f8, f8)',nopython=True)
@@ -102,7 +105,12 @@ class Surface():
 
 def do_surface(value):
     t1 = time.time()
-    verts, faces = marching_cubes(Surface.T, value)
+    # get triangles for surface using marching_cubes
+    # suppressing warnings for NaNs
+    with warnings.catch_warnings():
+        warnings.simplefilter('ignore')
+        verts, faces = marching_cubes(Surface.T, value)
+
     # adjust i and j components of vertices, so they match with lon & lat
     verts[:,0] += Surface.di
     verts[:,1] += Surface.dj
@@ -135,6 +143,7 @@ def do_surface(value):
 
 def do_vol(vble, fname, values, proj,
            xs=None, xe=None, ys=None, ye=None, domain_dir='.',
+           coordinate_file = 'coordinates.nc',
            dirname='.',tlevel=0, too_large_deg=2., opacity=1.0):
     t1 = time.time()
     print(dirname, fname)
@@ -146,44 +155,54 @@ def do_vol(vble, fname, values, proj,
             pathname = pathname[:-4]+component+'.nc'
             with Dataset(pathname) as f:
                 fv = f.variables
-                velocity[component] = fv[vname][tlevel,:,ys:ye,xs:xe]
+                try:
+                    velocity[component] = fv[vname][tlevel,:,ys:ye,xs:xe].data
+                except:
+                    velocity[component] = fv[vname][tlevel,:,ys:ye,xs:xe]
         # average onto T points
         T = .5*np.sqrt( (velocity['U'][:,1:,:-1] + velocity['U'][:,1:,1:])**2 +
                           (velocity['V'][:,:-1,1:] + velocity['V'][:,1:,1:])**2 )
         # T[0,0] now 1 up and to the right from lon, lat[0,0]
         # di, dj = 1., 1.
+        if xs is None:
+            xs=0
+        if ys is None:
+            ys=0
         di, dj = 1, 1
     else:
+        if xs is None:
+            xs=1
+        if ys is None:
+            ys=1
         with Dataset(pathname) as f:
             fv = f.variables
             T = fv[vble][tlevel,:,ys:ye,xs:xe]
         # di, dj = 0., 0.
         di, dj = 0, 0
-    if xs is None:
-        xs=0
-    if ys is None:
-        ys=0
-    
+
     xs += di
     ys += dj
 
-    pathname = pjoin(domain_dir, 'mask.nc')
+    pathname = find_domain_file(domain_dir,['mask.nc', 'allmeshes.nc'])
     try:
         with Dataset(pathname) as f:
             fv = f.variables
             Tsea = fv['tmask'][0,:,ys:ye,xs:xe].astype(np.bool)
+            if xs==1 and xe is None:
+                print('correcting sea mask')
+                Tsea[:,:,-1] = Tsea[:,:,0]
     except:
         sys.exit("can't find %s" % pathname)
 
-    pathname = pjoin(domain_dir, 'mesh_hgr.nc')
+    pathname = find_domain_file(domain_dir,['mesh_hgr.nc', 'allmeshes.nc'])
     if not os.path.exists(pathname):
-        pathname = pjoin(domain_dir, 'coordinates.nc')
+        pathname = pjoin(domain_dir, coordinate_file)
     with Dataset(pathname) as f:
         fv = f.variables
         Surface.lat = fv['gphit'][0,ys:ye,xs:xe].astype(np.float64)
         Surface.lon = fv['glamt'][0,ys:ye,xs:xe].astype(np.float64)
 
-    pathname = pjoin(domain_dir, 'mesh_zgr.nc')
+    pathname = find_domain_file(domain_dir,['mesh_zgr.nc', 'allmeshes.nc'])
     with Dataset(pathname) as f:
         fv = f.variables
         Surface.height = -fv['gdept'][0,:,ys:ye,xs:xe].astype(np.float64)
