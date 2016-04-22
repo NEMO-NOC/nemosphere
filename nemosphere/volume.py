@@ -146,84 +146,77 @@ def do_vol(vble, fname, values, proj,
            coordinate_file = 'coordinates.nc',
            dirname='.',tlevel=0, too_large_deg=2., opacity=1.0):
     t1 = time.time()
-    print(dirname, fname)
-    sys.stdout.flush()
+
+    pathname = find_domain_file(domain_dir,['mask.nc', 'allmeshes.nc'])
+    with Dataset(pathname) as f:
+        Nd = f.variables['tmask']
+        nzm, nym, nxm = Nd.shape[-3:]
+        Tsea = Nd[0,:,ys:ye,xs:xe].astype(np.bool)
+        if xs is None and xe is None:
+            print('correcting sea mask')
+            Tsea[:,:,-1] = Tsea[:,:,1]
+
     pathname = pjoin(dirname, fname)
+    if not os.path.exists(pathname):
+        sys.exit('cannot find file ',pathname )
     if vble == 'speed':
         velocity = {}
         for component, vname in zip(('U', 'V'),('vozocrtx','vomecrty')):
             pathname = pathname[:-4]+component+'.nc'
             with Dataset(pathname) as f:
-                fv = f.variables
+                Nd = f.variables[vname]
                 try:
-                    velocity[component] = fv[vname][tlevel,:,ys:ye,xs:xe].data
+                    velocity[component] = Nd[tlevel,:,ys:ye,xs:xe].data
                 except:
-                    velocity[component] = fv[vname][tlevel,:,ys:ye,xs:xe]
+                    velocity[component] = Nd[tlevel,:,ys:ye,xs:xe]
+        nz, ny, nx = Nd.shape[-3:]
         # average onto T points
-        T = .5*np.sqrt( (velocity['U'][:,1:,:-1] + velocity['U'][:,1:,1:])**2 +
+        T = np.empty([nz, ny, nx ], dtype=Nd.dtype)
+        T[:,:,1:] = .5*np.sqrt( (velocity['U'][:,1:,:-1] + velocity['U'][:,1:,1:])**2 +
                           (velocity['V'][:,:-1,1:] + velocity['V'][:,1:,1:])**2 )
-        # T[0,0] now 1 up and to the right from lon, lat[0,0]
-        # di, dj = 1., 1.
-        if xs is None:
-            xs=0
-        if ys is None:
-            ys=0
-        di, dj = 1, 1
+        T[:,:,0] = T[:,:,-1]
+        if nx == nxm and xs is None and xe is None:
+            xs = 1
+            xe = nx - 1
+        if ny == nym and ys is None and ye is None:
+            ys = 1
+            ye = ny - 1
+        T = T[ys:ye,xs:xe]
     else:
-        if xs is None:
-            xs=1
-        if ys is None:
-            ys=1
         with Dataset(pathname) as f:
-            fv = f.variables
-            T = fv[vble][tlevel,:,ys:ye,xs:xe]
-        # di, dj = 0., 0.
-        di, dj = 0, 0
+            Nd = f.variables[vble]
+            nz, ny, nx = Nd.shape[-3:]
+            if nx == nxm and xs is None and xe is None:
+                xs = 1
+                xe = nx #- 1
+            if ny == nym and ys is None and ye is None:
+                ys = 1
+                ye = ny #- 1
+            try:
+                T = Nd[tlevel,:,ys:ye,xs:xe].data
+            except:
+                T = Nd[tlevel,:,ys:ye,xs:xe]
 
-    xs += di
-    ys += dj
-
-    pathname = find_domain_file(domain_dir,['mask.nc', 'allmeshes.nc'])
-    try:
-        with Dataset(pathname) as f:
-            fv = f.variables
-            Tsea = fv['tmask'][0,:,ys:ye,xs:xe].astype(np.bool)
-            if xs==1 and xe is None:
-                print('correcting sea mask')
-                Tsea[:,:,-1] = Tsea[:,:,0]
-    except:
-        sys.exit("can't find %s" % pathname)
-
-    pathname = find_domain_file(domain_dir,['mesh_hgr.nc', 'allmeshes.nc'])
-    if not os.path.exists(pathname):
-        pathname = pjoin(domain_dir, coordinate_file)
+    pathname = find_domain_file(domain_dir,['mesh_hgr.nc', 'allmeshes.nc', coordinate_file])
     with Dataset(pathname) as f:
         fv = f.variables
         Surface.lat = fv['gphit'][0,ys:ye,xs:xe].astype(np.float64)
         Surface.lon = fv['glamt'][0,ys:ye,xs:xe].astype(np.float64)
 
-    pathname = find_domain_file(domain_dir,['mesh_zgr.nc', 'allmeshes.nc'])
+    pathname = find_domain_file(domain_dir,['mesh_zgr.nc', 'allmeshes.nc', coordinate_file])
     with Dataset(pathname) as f:
         fv = f.variables
         Surface.height = -fv['gdept'][0,:,ys:ye,xs:xe].astype(np.float64)
 
-    # print(T.shape)
-    try:
-        print(T.mask.ravel()[0])
-        Tdata = T.data
-    except:
-        Tdata = T
-    del T
 
-    nz, ny, nx = Tsea.shape
-    print(nz, ny, nx)
+    Tsea = Tsea[:, ys:ye,xs:xe]
     Surface.kmt = Tsea.astype(int).sum(0)
-    Tdata[~Tsea] = np.NaN
+    T[~Tsea] = np.NaN
     t1, t0 = time.time(), t1
 
     print('time taken to get data is', t1 - t0, ' s','\n')
 
-    Surface.T = Tdata
+    Surface.T = T
     Surface.proj = proj
     Surface.di = 0. #di
     Surface.dj = 0. #dj
@@ -247,7 +240,7 @@ def do_vol(vble, fname, values, proj,
         xyzfaces_list = []
         for value in values:
             xyzfaces_list.append(do_surface(value))
-    del Surface.T, Surface.kmt, Tsea, Tdata, Surface.height
+    del Surface.T, Surface.kmt, Tsea, T, Surface.height
 
     NaN_color = (0.,0.,0.,.0)
     for xyz_faces, color in zip(xyzfaces_list, colors):
