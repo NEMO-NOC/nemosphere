@@ -174,13 +174,20 @@ def do_vol(vble, fname, values, proj,
         T = np.empty([nz, ny, nx ], dtype=Nd.dtype)
         T[:,:,1:] = .5*np.sqrt( (velocity['U'][:,1:,:-1] + velocity['U'][:,1:,1:])**2 +
                           (velocity['V'][:,:-1,1:] + velocity['V'][:,1:,1:])**2 )
-        T[:,:,0] = T[:,:,-1]
+        # old logic better, need to know increment for def of Tsea
         if nx == nxm and xs is None and xe is None:
-            xs = 1
-            xe = nx - 1
+            di = 1
+            xe = nx# - 1
+        else:
+            T[:,:,0] = T[:,:,1]
+            if xs is None:
+                xs = 0
         if ny == nym and ys is None and ye is None:
             ys = 1
-            ye = ny - 1
+            ye = ny# - 1
+        elif ys is None:
+            ys = 0
+            T[:,0,:] = T[:,1,:]
         T = T[ys:ye,xs:xe]
     else:
         with Dataset(pathname) as f:
@@ -189,9 +196,13 @@ def do_vol(vble, fname, values, proj,
             if nx == nxm and xs is None and xe is None:
                 xs = 1
                 xe = nx #- 1
+            elif xs is None:
+                xs = 0
+                xe = nx
             if ny == nym and ys is None and ye is None:
                 ys = 1
-                ye = ny #- 1
+            elif ys is None:
+                ys = 0
             try:
                 T = Nd[tlevel,:,ys:ye,xs:xe].data
             except:
@@ -217,6 +228,8 @@ def do_vol(vble, fname, values, proj,
     print('time taken to get data is', t1 - t0, ' s','\n')
 
     Surface.T = T
+    print ('Surface.T has shape', Surface.T.shape)
+    print('ys, ye=',ys, ye,' xs, xe=',xs, xe)
     Surface.proj = proj
     Surface.di = 0. #di
     Surface.dj = 0. #dj
