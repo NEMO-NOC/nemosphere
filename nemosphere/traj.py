@@ -15,7 +15,7 @@ from multiprocessing import Pool,cpu_count
 
 from mpl_toolkits.basemap import Basemap
 
-from lego5 import Topography
+from .lego5 import Topography
 
 @jit
 def triangle_height(p1, p2, p3, a, b):

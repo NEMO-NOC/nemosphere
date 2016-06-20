@@ -15,7 +15,7 @@ import warnings
 
 from mayavi import mlab
 
-from lego5 import find_domain_file
+from .lego5 import find_domain_file
 
 
 @jit('f8(f8, f8, f8, f8, f8, f8, f8, f8, f8)',nopython=True)

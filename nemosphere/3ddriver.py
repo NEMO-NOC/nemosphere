@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#!/usr/bin/env python3
 from __future__ import print_function
 import os, sys, platform
 from argparse import ArgumentParser
@@ -19,10 +19,10 @@ from mayavi.mlab import show, view, gcf, savefig, options
 from tvtk.api import tvtk
 from tvtk.common import configure_input_data
 
-import lego5
-import traj
-import volume
-import dots
+from . import lego5
+from . import traj
+from . import volume
+from . import dots
 
 
 class JsonConfigParser(configparser.ConfigParser):
