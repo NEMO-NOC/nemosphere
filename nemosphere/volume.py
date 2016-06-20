@@ -141,20 +141,65 @@ def do_surface(value):
 
     return x,y,z, faces
 
+def get_wrap(nx=None, ny=None):
+    if nx is not None:
+        n = nx
+        var = 'i'
+    elif ny is not None:
+        n = ny
+        var = 'j'
+    else:
+        sys.exit('neitter nx nor ny is specified')
+
+    fullwrap['i'] = (362, 1444, 4322)
+    fullwrap['j'] = (292, 1021, 3059)
+
+    core['i'] = (360, 1442, 4320)
+    core['j'] = (291, 1020, 3058)
+
+    if n in fullwrap[var]:
+        return 'fullwrap'
+    elif n in core[var]
+        return 'fullcore'
+    else:
+        return 'part'
+
+def data(x):
+    try:
+        return x.data
+    except:
+        return x
+
 def do_vol(vble, fname, values, proj,
            xs=None, xe=None, ys=None, ye=None, domain_dir='.',
            coordinate_file = 'coordinates.nc',
            dirname='.',tlevel=0, too_large_deg=2., opacity=1.0):
     t1 = time.time()
 
+
     pathname = find_domain_file(domain_dir,['mask.nc', 'allmeshes.nc'])
     with Dataset(pathname) as f:
         Nd = f.variables['tmask']
         nzm, nym, nxm = Nd.shape[-3:]
-        Tsea = Nd[0,:,ys:ye,xs:xe].astype(np.bool)
-        if xs is None and xe is None:
-            print('correcting sea mask')
-            Tsea[:,:,-1] = Tsea[:,:,1]
+
+    if xs is None:
+        if get_wrap(nx=nxm) == 'fullwrap':
+            xs = 1
+        else:
+            xs = 0
+    if xe is None:
+        xe = nym
+    if ys is None:
+        ys = 0
+    if ye is None:
+        ye = nym
+
+    Tsea = Nd[0,:,ys:ye,xs:xe].astype(np.bool)
+    nz, ny, nx = Tsea.shape
+
+    if get_wrap(nx=xe) == 'fullwrap':
+        print('correcting sea mask')
+        Tsea[:,:,-1] = Tsea[:,:,0]
 
     pathname = pjoin(dirname, fname)
     if not os.path.exists(pathname):
@@ -165,48 +210,32 @@ def do_vol(vble, fname, values, proj,
             pathname = pathname[:-4]+component+'.nc'
             with Dataset(pathname) as f:
                 Nd = f.variables[vname]
-                try:
-                    velocity[component] = Nd[tlevel,:,ys:ye,xs:xe].data
-                except:
-                    velocity[component] = Nd[tlevel,:,ys:ye,xs:xe]
-        nz, ny, nx = Nd.shape[-3:]
+                nz, nys, nxs = Nd.shape[-3:]
+                if ys > 0 and xs > 0:
+                    velocity[component][:,:,:] = data(Nd[tlevel,:,ys-1:ye,xs-1:xe])
+                else:
+                    velocity[component] = np.empty([nz, ny+1, nx+1])
+                    velocity[component][:,1:,1:] = data(Nd[tlevel,:,ys:ye,xs:xe])
+                    if get_wrap(nx=nxs) == 'fullcore'
+                        velocity[component][:,:,0] = data(Nd[tlevel,:,ys:ye,-1])
+                    else:
+                        velocity[component][:,0,1:] = velocity[component][:,1,1:]
+
         # average onto T points
-        T = np.empty([nz, ny, nx ], dtype=Nd.dtype)
-        T[:,:,1:] = .5*np.sqrt( (velocity['U'][:,1:,:-1] + velocity['U'][:,1:,1:])**2 +
+        T = .5*np.sqrt( (velocity['U'][:,1:,:-1] + velocity['U'][:,1:,1:])**2 +
                           (velocity['V'][:,:-1,1:] + velocity['V'][:,1:,1:])**2 )
-        # old logic better, need to know increment for def of Tsea
-        if nx == nxm and xs is None and xe is None:
-            di = 1
-            xe = nx# - 1
-        else:
-            T[:,:,0] = T[:,:,1]
-            if xs is None:
-                xs = 0
-        if ny == nym and ys is None and ye is None:
-            ys = 1
-            ye = ny# - 1
-        elif ys is None:
-            ys = 0
-            T[:,0,:] = T[:,1,:]
-        T = T[ys:ye,xs:xe]
     else:
+        if xs is None:
+            xs=1
+        if ys is None:
+            ys=1
         with Dataset(pathname) as f:
             Nd = f.variables[vble]
             nz, ny, nx = Nd.shape[-3:]
-            if nx == nxm and xs is None and xe is None:
-                xs = 1
-                xe = nx #- 1
-            elif xs is None:
-                xs = 0
-                xe = nx
-            if ny == nym and ys is None and ye is None:
-                ys = 1
-            elif ys is None:
-                ys = 0
-            try:
-                T = Nd[tlevel,:,ys:ye,xs:xe].data
-            except:
-                T = Nd[tlevel,:,ys:ye,xs:xe]
+            if (ny, nx) != (nym, nxm):
+                sys.exit('Dataset %s has different shape %5i %5i to mask file %5i %5i' %
+                         (vble, ny, nx, nym, nxm))
+            T = data(Nd[tlevel,:,ys:ye,xs:xe])
 
     pathname = find_domain_file(domain_dir,['mesh_hgr.nc', 'allmeshes.nc', coordinate_file])
     with Dataset(pathname) as f:
