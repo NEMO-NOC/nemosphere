@@ -149,17 +149,19 @@ def get_wrap(nx=None, ny=None):
         n = ny
         var = 'j'
     else:
-        sys.exit('neitter nx nor ny is specified')
+        sys.exit('neither nx nor ny is specified')
 
+    fullwrap = {}
     fullwrap['i'] = (362, 1444, 4322)
     fullwrap['j'] = (292, 1021, 3059)
 
+    core = {}
     core['i'] = (360, 1442, 4320)
     core['j'] = (291, 1020, 3058)
 
     if n in fullwrap[var]:
         return 'fullwrap'
-    elif n in core[var]
+    elif n in core[var]:
         return 'fullcore'
     else:
         return 'part'
@@ -182,20 +184,21 @@ def do_vol(vble, fname, values, proj,
         Nd = f.variables['tmask']
         nzm, nym, nxm = Nd.shape[-3:]
 
-    if xs is None:
-        if get_wrap(nx=nxm) == 'fullwrap':
-            xs = 1
-        else:
-            xs = 0
-    if xe is None:
-        xe = nym
-    if ys is None:
-        ys = 0
-    if ye is None:
-        ye = nym
+        if xs is None:
+            if get_wrap(nx=nxm) == 'fullwrap':
+                xs = 1
+            else:
+                xs = 0
+        if xe is None:
+            xe = nym
+        if ys is None:
+            ys = 0
+        if ye is None:
+            ye = nym
 
-    Tsea = Nd[0,:,ys:ye,xs:xe].astype(np.bool)
-    nz, ny, nx = Tsea.shape
+        print(Nd.shape)
+        Tsea = Nd[0,:,ys:ye,xs:xe].astype(np.bool)
+        nz, ny, nx = Tsea.shape
 
     if get_wrap(nx=xe) == 'fullwrap':
         print('correcting sea mask')
@@ -203,7 +206,7 @@ def do_vol(vble, fname, values, proj,
 
     pathname = pjoin(dirname, fname)
     if not os.path.exists(pathname):
-        sys.exit('cannot find file ',pathname )
+        sys.exit('cannot find file %s' % pathname )
     if vble == 'speed':
         velocity = {}
         for component, vname in zip(('U', 'V'),('vozocrtx','vomecrty')):
@@ -216,7 +219,7 @@ def do_vol(vble, fname, values, proj,
                 else:
                     velocity[component] = np.empty([nz, ny+1, nx+1])
                     velocity[component][:,1:,1:] = data(Nd[tlevel,:,ys:ye,xs:xe])
-                    if get_wrap(nx=nxs) == 'fullcore'
+                    if get_wrap(nx=nxs) == 'fullcore':
                         velocity[component][:,:,0] = data(Nd[tlevel,:,ys:ye,-1])
                     else:
                         velocity[component][:,0,1:] = velocity[component][:,1,1:]
