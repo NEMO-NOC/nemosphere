@@ -15,6 +15,7 @@ import warnings
 
 from mayavi import mlab
 
+import nemo_rho
 from .lego5 import find_domain_file
 
 
@@ -141,6 +142,7 @@ def do_surface(value):
 
     return x,y,z, faces
 
+
 def get_wrap(nx=None, ny=None):
     if nx is not None:
         n = nx
@@ -165,12 +167,24 @@ def get_wrap(nx=None, ny=None):
         return 'fullcore'
     else:
         return 'part'
+def get_varNd(variable,f):
+    vardict = {'theta':['potemp', 'votemper'],
+               'S':['vosaline', 'salin'],
+               'U':['vozocrtx', 'uo'],
+               'V':['vomerty', 'vo']}
+    # if variable not a key of vardict, just return as is
+    vnames = vardict.get(variable, [variable])
+    for vname in vnames:
+        if vname in list(f.variables.keys()):
+            return f.variables[vname]
+    else:
+        sys.exit('variables %s are not in file' % ' '.join(vnames))
 
-def data(x):
+def stripmask(variable):
     try:
-        return x.data
+        return variable.data
     except:
-        return x
+        return variable
 
 def do_vol(vble, fname, values, proj,
            xs=None, xe=None, ys=None, ye=None, domain_dir='.',
@@ -209,10 +223,10 @@ def do_vol(vble, fname, values, proj,
         sys.exit('cannot find file %s' % pathname )
     if vble == 'speed':
         velocity = {}
-        for component, vname in zip(('U', 'V'),('vozocrtx','vomecrty')):
-            pathname = pathname[:-4]+component+'.nc'
+        for component in ('U', 'V'):
+            pathname = pathname[:-8] + pathname[-8:].replace('U', component)
             with Dataset(pathname) as f:
-                Nd = f.variables[vname]
+                Nd = get_varNd(component, f)
                 nz, nys, nxs = Nd.shape[-3:]
                 if ys > 0 and xs > 0:
                     velocity[component][:,:,:] = data(Nd[tlevel,:,ys-1:ye,xs-1:xe])
@@ -227,18 +241,42 @@ def do_vol(vble, fname, values, proj,
         # average onto T points
         T = .5*np.sqrt( (velocity['U'][:,1:,:-1] + velocity['U'][:,1:,1:])**2 +
                           (velocity['V'][:,:-1,1:] + velocity['V'][:,1:,1:])**2 )
+    elif 'sigma' in vble:
+        if xs is None:
+            xs=1
+        if ys is None:
+            ys=1
+
+        print('sigma found')
+        TS = {}
+        with Dataset(pathname) as f:
+            for act_vble in ('theta', 'S'):
+                TS[act_vble] =  get_varNd(act_vble, f)[tlevel,:,ys:ye,xs:xe]
+                TS[act_vble] = stripmask(TS[act_vble])
+        #di, dj = 0, 0
     else:
         if xs is None:
             xs=1
         if ys is None:
             ys=1
         with Dataset(pathname) as f:
-            Nd = f.variables[vble]
+            Nd = get_varNd(vble, f)
             nz, ny, nx = Nd.shape[-3:]
             if (ny, nx) != (nym, nxm):
                 sys.exit('Dataset %s has different shape %5i %5i to mask file %5i %5i' %
                          (vble, ny, nx, nym, nxm))
             T = data(Nd[tlevel,:,ys:ye,xs:xe])
+
+    if 'sigma' in vble:
+        print('sigma found again')
+        if TS['theta'].dtype == np.float64:
+            sigma = nemo_rho.eos.sigma_n8
+        else:
+            sigma = nemo_rho.eos.sigma_n4
+        ref_depth_km = float(vble[-1])
+        neos = 0
+        T = sigma(1.e20, ~Tsea.ravel(), TS['theta'].ravel(),
+                        TS['S'].ravel(), ref_depth_km, neos ).reshape(Tsea.shape)
 
     pathname = find_domain_file(domain_dir,['mesh_hgr.nc', 'allmeshes.nc', coordinate_file])
     with Dataset(pathname) as f:
@@ -249,7 +287,12 @@ def do_vol(vble, fname, values, proj,
     pathname = find_domain_file(domain_dir,['mesh_zgr.nc', 'allmeshes.nc', coordinate_file])
     with Dataset(pathname) as f:
         fv = f.variables
-        Surface.height = -fv['gdept'][0,:,ys:ye,xs:xe].astype(np.float64)
+        vbles = list(fv.keys())
+	if 'gdept' in vbles:
+	    dNd = fv['gdept']
+    elif 'gdept_0' in vbles:
+	    dNd = fv['gdept_0']
+        Surface.height = -dNd[0,:,ys:ye,xs:xe].astype(np.float64)
 
 
     Tsea = Tsea[:, ys:ye,xs:xe]
