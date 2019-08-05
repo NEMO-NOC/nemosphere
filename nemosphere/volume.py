@@ -229,12 +229,12 @@ def do_vol(vble, fname, values, proj,
                 Nd = get_varNd(component, f)
                 nz, nys, nxs = Nd.shape[-3:]
                 if ys > 0 and xs > 0:
-                    velocity[component][:,:,:] = data(Nd[tlevel,:,ys-1:ye,xs-1:xe])
+                    velocity[component][:,:,:] = stripmask(Nd[tlevel,:,ys-1:ye,xs-1:xe])
                 else:
                     velocity[component] = np.empty([nz, ny+1, nx+1])
-                    velocity[component][:,1:,1:] = data(Nd[tlevel,:,ys:ye,xs:xe])
+                    velocity[component][:,1:,1:] = stripmask(Nd[tlevel,:,ys:ye,xs:xe])
                     if get_wrap(nx=nxs) == 'fullcore':
-                        velocity[component][:,:,0] = data(Nd[tlevel,:,ys:ye,-1])
+                        velocity[component][:,:,0] = stripmask(Nd[tlevel,:,ys:ye,-1])
                     else:
                         velocity[component][:,0,1:] = velocity[component][:,1,1:]
 
@@ -265,7 +265,7 @@ def do_vol(vble, fname, values, proj,
             if (ny, nx) != (nym, nxm):
                 sys.exit('Dataset %s has different shape %5i %5i to mask file %5i %5i' %
                          (vble, ny, nx, nym, nxm))
-            T = data(Nd[tlevel,:,ys:ye,xs:xe])
+            T = stripmask(Nd[tlevel,:,ys:ye,xs:xe])
 
     if 'sigma' in vble:
         print('sigma found again')
