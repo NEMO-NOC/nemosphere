@@ -8,7 +8,7 @@ import os.path
 from numba import jit
 from multiprocessing import Pool,cpu_count
 
-from skimage.measure import marching_cubes
+from skimage.measure import marching_cubes_lewiner as marching_cubes
 from netCDF4 import Dataset
 import time
 import warnings
@@ -288,11 +288,11 @@ def do_vol(vble, fname, values, proj,
     with Dataset(pathname) as f:
         fv = f.variables
         vbles = list(fv.keys())
-    if 'gdept' in vbles:
-        dNd = fv['gdept']
-    elif 'gdept_0' in vbles:
-        dNd = fv['gdept_0']
-        Surface.height = -dNd[0,:,ys:ye,xs:xe].astype(np.float64)
+        if 'gdept' in vbles:
+            dNd = fv['gdept']
+        elif 'gdept_0' in vbles:
+            dNd = fv['gdept_0']
+            Surface.height = -dNd[0,:,ys:ye,xs:xe].astype(np.float64)
 
 
     Tsea = Tsea[:, ys:ye,xs:xe]

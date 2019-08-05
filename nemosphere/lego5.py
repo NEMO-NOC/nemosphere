@@ -297,6 +297,8 @@ if __name__ == '__main__':
     parser = ArgumentParser(description='produce lego-block topography e.g. \n python ~/VC_code/NEMOcode/lego5.py -b  0 10000 600 10000 -d ../025')
     parser.add_argument('-b',dest='bounds',help='ilo (f or u) ihi jlo (f or v) jhi', type=int,
                          nargs= '*',default=None)
+    parser.add_argument('--size',dest='size_in_pixels',help='nx ny', type=int,
+                         nargs= '*',default=(1024, 768))
     parser.add_argument('--ilo',dest='ilo',help='ilo; overrrides value in bounds', type=int, default=None)
     parser.add_argument('--jlo',dest='jlo',help='jlo of southern f (or v) -point bdry', type=int, default=None)
     parser.add_argument('--ihi',dest='ihi',help='ihi; overrrides value in bounds', type=int, default=None)
@@ -352,7 +354,7 @@ if __name__ == '__main__':
 
     topo = Topography(xs=xs, xe=xe, ys=ys, ye=ye,
                         domain_dir=args.domain_dir, bathymetry_file=args.bathymetry_file,
-                        coordinate_file= args.coordinate_file,
+                        coordinate_file= args.coordinate_file, size_in_pixels = args.size_in_pixels,
                         bottom = args.bottom, map2d = map, globe = args.globe, topo_cbar = args.topo_cbar)
 
 
