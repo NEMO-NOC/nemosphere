@@ -150,14 +150,13 @@ class Topography(object):
         pathname = find_domain_file(domain_dir,[bathymetry_file, 'allmeshes.nc'])
         with Dataset(pathname) as f:
             # print(f.variables.keys())
-            dep = f.variables['Bathymetry'][ys:ye,xs:xe]
+            dep = f.variables['Bathymetry'][ys:ye,xs:xe].astype(np.float32)
 
         pathname = find_domain_file(domain_dir,['mesh_hgr.nc', 'allmeshes.nc', coordinate_file])
         with Dataset(pathname) as f:
             # print(f.variables.keys())
-            lambda_f = f.variables['glamf'][...,ys:ye,xs:xe].squeeze()
-            phi_f = f.variables['gphif'][...,ys:ye,xs:xe].squeeze()
-
+            lambda_f = f.variables['glamf'][...,ys:ye,xs:xe].squeeze().astype(np.float32)
+            phi_f = f.variables['gphif'][...,ys:ye,xs:xe].squeeze().astype(np.float32)
         t1, t0 = time.time(), t1
         print('%10.5f s taken to read in data\n' % (t1 - t0) )
 
@@ -176,7 +175,7 @@ class Topography(object):
                 depfill[nextra:,:] = dep
                 lonfill[:nextra,:] = lambda_f[0,:]
                 # Add new dimension None to 1D y-array so it can be 'Broadcast' over longitude
-                latfill[:nextra,:] = np.arange(-90,minlat,dy_deg)[:,None]
+                latfill[:nextra,:] = np.arange(-90,minlat,dy_deg, dtype=np.float32)[:,None]
                 depfill[:nextra,:] = 0.0
                 phi_f, lambda_f, dep = latfill, lonfill, depfill
                 del latfill, lonfill, depfill
@@ -205,7 +204,7 @@ class Topography(object):
 
         zscale = zs_rat*dist/6000.
         self.zscale = zscale
-        dep = -zscale*dep.astype(np.float64)
+        dep = -zscale*dep #.astype(np.float64)
 
         t1, t0 = time.time(), t1
         print('%10.5f s taken to scale & convert data to float64\n' % (t1 - t0) )
@@ -221,7 +220,7 @@ class Topography(object):
         # ntriangles is now total no of triangles; flatten to 1d arrays of vertices of length 3*triangles
         x, y, z, t = [a.ravel() for a in (x, y, z, t)]
         # where triangles(k,1...3) contains indices relating to kth triangle
-        triangles = np.arange(3*ntriangles).reshape(ntriangles,3)
+        triangles = np.arange(3*ntriangles,dtype=np.int32).reshape(ntriangles,3)
         t1, t0 = time.time(), t1
         print('%10.5f s taken to calculate vertices\n' % (t1 - t0) )
 
