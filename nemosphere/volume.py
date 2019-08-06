@@ -36,7 +36,7 @@ def triangle_length(x0, x1, x2, y0, y1, y2, z0, z1, z2):
          )
     return length2
 
-@jit('void(i4, i8[:,:], f8[:], f8[:], f8[:], b1[:], f8)',nopython=True)
+@jit('void(i8, i8[:,:], f8[:], f8[:], f8[:], b1[:], f8)',nopython=True)
 def find_long_faces(nfaces, faces, x, y, z, keep_face, too_large_deg2):
     for i in range(nfaces):
         nf0, nf1, nf2 = faces[i,0], faces[i,1], faces[i,2]
@@ -54,7 +54,7 @@ def remove_long_faces(faces, x, y, z, too_large_deg):
     return faces
 
 
-@jit('void(i4, i8[:,:], f8[:,:], b1[:])',nopython=True)
+@jit('void(i8, i8[:,:], f8[:,:], b1[:])',nopython=True)
 def find_nan_faces(nfaces, faces, verts, keep_face):
     for i in range(nfaces):
         nf0, nf1, nf2 = faces[i,0], faces[i,1], faces[i,2]
@@ -70,7 +70,7 @@ def remove_nan_faces(faces, verts):
     faces = np.compress(keep_face,faces, axis=0)
     return faces
 
-@jit('void(f8[:,:], i4, f8[:,:], f8[:,:], f8[:,:,:], i8[:,:], f8, f8)',nopython=True)
+@jit('void(f8[:,:], i8, f8[:,:], f8[:,:], f8[:,:,:], i8[:,:], f8, f8)',nopython=True)
 def do_ijk_to_lat_lon_height(v, nv, lat, lon, zt, kmt, rnx, rny):
 
     epsilon = 1.e-10
@@ -110,13 +110,12 @@ def do_surface(value):
     # suppressing warnings for NaNs
     with warnings.catch_warnings():
         warnings.simplefilter('ignore')
-        verts, faces = marching_cubes(Surface.T, value)
+        verts, faces, normals, values = marching_cubes(Surface.T, value)
 
     # adjust i and j components of vertices, so they match with lon & lat
     verts[:,0] += Surface.di
     verts[:,1] += Surface.dj
-    print('max faces', faces.max(), 'faces shape', faces.shape, 'no verts =', verts.shape[0])
-    print (verts.shape)
+    print('max faces', faces.max(), 'faces shape', faces.shape, '# of verts =', verts.shape[0])
     t1, t0 = time.time(), t1
     print('time taken to calculate surface is', t1 - t0, ' s','\n')
 
@@ -290,6 +289,7 @@ def do_vol(vble, fname, values, proj,
         vbles = list(fv.keys())
         if 'gdept' in vbles:
             dNd = fv['gdept']
+            Surface.height = np.zeros(Surface.lat.shape, dtype=np.float64)
         elif 'gdept_0' in vbles:
             dNd = fv['gdept_0']
             Surface.height = -dNd[0,:,ys:ye,xs:xe].astype(np.float64)
