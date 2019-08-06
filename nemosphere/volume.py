@@ -19,7 +19,7 @@ import nemo_rho
 from .lego5 import find_domain_file
 
 
-@jit('f8(f8, f8, f8, f8, f8, f8, f8, f8, f8)',nopython=True)
+@jit('f4(f4, f4, f4, f4, f4, f4, f4, f4, f4)',nopython=True)
 def triangle_length(x0, x1, x2, y0, y1, y2, z0, z1, z2):
     """
     Input: 3 3-d (or higher) vectors p1, p2, p3
@@ -36,7 +36,7 @@ def triangle_length(x0, x1, x2, y0, y1, y2, z0, z1, z2):
          )
     return length2
 
-@jit('void(i8, i8[:,:], f8[:], f8[:], f8[:], b1[:], f8)',nopython=True)
+@jit('void(i8, i4[:,:], f4[:], f4[:], f4[:], b1[:], f4)',nopython=True)
 def find_long_faces(nfaces, faces, x, y, z, keep_face, too_large_deg2):
     for i in range(nfaces):
         nf0, nf1, nf2 = faces[i,0], faces[i,1], faces[i,2]
@@ -54,7 +54,7 @@ def remove_long_faces(faces, x, y, z, too_large_deg):
     return faces
 
 
-@jit('void(i8, i8[:,:], f8[:,:], b1[:])',nopython=True)
+@jit('void(i8, i4[:,:], f4[:,:], b1[:])',nopython=True)
 def find_nan_faces(nfaces, faces, verts, keep_face):
     for i in range(nfaces):
         nf0, nf1, nf2 = faces[i,0], faces[i,1], faces[i,2]
@@ -70,7 +70,7 @@ def remove_nan_faces(faces, verts):
     faces = np.compress(keep_face,faces, axis=0)
     return faces
 
-@jit('void(f8[:,:], i8, f8[:,:], f8[:,:], f8[:,:,:], i8[:,:], f8, f8)',nopython=True)
+@jit('void(f4[:,:], i8, f4[:,:], f4[:,:], f4[:,:,:], i4[:,:], f4, f4)',nopython=True)
 def do_ijk_to_lat_lon_height(v, nv, lat, lon, zt, kmt, rnx, rny):
 
     epsilon = 1.e-10
@@ -97,7 +97,7 @@ def do_ijk_to_lat_lon_height(v, nv, lat, lon, zt, kmt, rnx, rny):
 
 def ijk_to_lat_lon_height(v, lat, lon, zt, kmt):
     ny, nx = kmt.shape
-    rny, rnx = float(ny), float(nx)
+    rny, rnx = np.float32(ny), np.float32(nx)
     nv, _ = v.shape
     do_ijk_to_lat_lon_height(v, nv, lat, lon, zt, kmt, rnx, rny)
 
@@ -166,6 +166,7 @@ def get_wrap(nx=None, ny=None):
         return 'fullcore'
     else:
         return 'part'
+
 def get_varNd(variable,f):
     vardict = {'theta':['potemp', 'votemper'],
                'S':['vosaline', 'salin'],
@@ -203,14 +204,15 @@ def do_vol(vble, fname, values, proj,
             else:
                 xs = 0
         if xe is None:
-            xe = nym
+            xe = nxm
         if ys is None:
             ys = 0
         if ye is None:
             ye = nym
 
         print(Nd.shape)
-        Tsea = Nd[0,:,ys:ye,xs:xe].astype(np.bool)
+        tmask_float = Nd[0,:,ys:ye,xs:xe]
+        Tsea = tmask_float.astype(np.bool)
         nz, ny, nx = Tsea.shape
 
     if get_wrap(nx=xe) == 'fullwrap':
@@ -228,12 +230,12 @@ def do_vol(vble, fname, values, proj,
                 Nd = get_varNd(component, f)
                 nz, nys, nxs = Nd.shape[-3:]
                 if ys > 0 and xs > 0:
-                    velocity[component][:,:,:] = stripmask(Nd[tlevel,:,ys-1:ye,xs-1:xe])
+                    velocity[component][:,:,:] = stripmask(Nd[tlevel,:,ys-1:ye,xs-1:xe]).astype(np.float32)
                 else:
-                    velocity[component] = np.empty([nz, ny+1, nx+1])
-                    velocity[component][:,1:,1:] = stripmask(Nd[tlevel,:,ys:ye,xs:xe])
+                    velocity[component] = np.empty([nz, ny+1, nx+1],dtype=np.float32)
+                    velocity[component][:,1:,1:] = stripmask(Nd[tlevel,:,ys:ye,xs:xe]).astype(np.float32)
                     if get_wrap(nx=nxs) == 'fullcore':
-                        velocity[component][:,:,0] = stripmask(Nd[tlevel,:,ys:ye,-1])
+                        velocity[component][:,:,0] = stripmask(Nd[tlevel,:,ys:ye,-1]).astype(np.float32)
                     else:
                         velocity[component][:,0,1:] = velocity[component][:,1,1:]
 
@@ -250,7 +252,7 @@ def do_vol(vble, fname, values, proj,
         TS = {}
         with Dataset(pathname) as f:
             for act_vble in ('theta', 'S'):
-                TS[act_vble] =  get_varNd(act_vble, f)[tlevel,:,ys:ye,xs:xe]
+                TS[act_vble] =  get_varNd(act_vble, f)[tlevel,:,ys:ye,xs:xe].astype(np.float32)
                 TS[act_vble] = stripmask(TS[act_vble])
         #di, dj = 0, 0
     else:
@@ -264,7 +266,7 @@ def do_vol(vble, fname, values, proj,
             if (ny, nx) != (nym, nxm):
                 sys.exit('Dataset %s has different shape %5i %5i to mask file %5i %5i' %
                          (vble, ny, nx, nym, nxm))
-            T = stripmask(Nd[tlevel,:,ys:ye,xs:xe])
+            T = stripmask(Nd[tlevel,:,ys:ye,xs:xe]).astype(np.float32)
 
     if 'sigma' in vble:
         print('sigma found again')
@@ -280,8 +282,8 @@ def do_vol(vble, fname, values, proj,
     pathname = find_domain_file(domain_dir,['mesh_hgr.nc', 'allmeshes.nc', coordinate_file])
     with Dataset(pathname) as f:
         fv = f.variables
-        Surface.lat = fv['gphit'][0,ys:ye,xs:xe].astype(np.float64)
-        Surface.lon = fv['glamt'][0,ys:ye,xs:xe].astype(np.float64)
+        Surface.lat = fv['gphit'][0,ys:ye,xs:xe].astype(np.float32)
+        Surface.lon = fv['glamt'][0,ys:ye,xs:xe].astype(np.float32)
 
     pathname = find_domain_file(domain_dir,['mesh_zgr.nc', 'allmeshes.nc', coordinate_file])
     with Dataset(pathname) as f:
@@ -289,14 +291,15 @@ def do_vol(vble, fname, values, proj,
         vbles = list(fv.keys())
         if 'gdept' in vbles:
             dNd = fv['gdept']
-            Surface.height = np.zeros(Surface.lat.shape, dtype=np.float64)
+            Surface.height = -dNd[0,:,ys:ye,xs:xe].astype(np.float32)
         elif 'gdept_0' in vbles:
             dNd = fv['gdept_0']
-            Surface.height = -dNd[0,:,ys:ye,xs:xe].astype(np.float64)
+            gdept_0 = dNd[0,:].astype(np.float32)
+            Surface.height = np.tile(gdept_0, Tsea.shape + (1,))
 
 
-    Tsea = Tsea[:, ys:ye,xs:xe]
-    Surface.kmt = Tsea.astype(int).sum(0)
+#   Feature/bug of numpy that sun converts int32 to int64
+    Surface.kmt = tmask_float.astype(np.int32).sum(0).astype(np.int32)
     T[~Tsea] = np.NaN
     t1, t0 = time.time(), t1
 
