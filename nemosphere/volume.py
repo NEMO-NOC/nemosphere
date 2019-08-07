@@ -153,12 +153,12 @@ def get_wrap(nx=None, ny=None):
         sys.exit('neither nx nor ny is specified')
 
     fullwrap = {}
-    fullwrap['i'] = (362, 1444, 4322)
-    fullwrap['j'] = (292, 1021, 3059)
+    fullwrap['i'] = (362, 1442, 4322)
+    fullwrap['j'] = (292, 1021, 1027, 3059)
 
     core = {}
-    core['i'] = (360, 1442, 4320)
-    core['j'] = (291, 1020, 3058)
+    core['i'] = (360, 1440, 4320)
+    core['j'] = (291, 1020, 1026, 3058)
 
     if n in fullwrap[var]:
         return 'fullwrap'
@@ -294,11 +294,14 @@ def do_vol(vble, fname, values, proj,
             Surface.height = -dNd[0,:,ys:ye,xs:xe].astype(np.float32)
         elif 'gdept_0' in vbles:
             dNd = fv['gdept_0']
-            gdept_0 = dNd[0,:].astype(np.float32)
-            Surface.height = np.tile(gdept_0, Tsea.shape + (1,))
+            if len(dNd.shape) == 2:
+                gdept_0 = dNd[0,:].astype(np.float32)
+                Surface.height = np.tile(gdept_0, Tsea.shape + (1,))
+            elif len(dNd.shape) == 4:
+                Surface.height = -dNd[0,:,ys:ye,xs:xe].astype(np.float32)
 
 
-#   Feature/bug of numpy that sun converts int32 to int64
+#   Feature/bug of numpy that sum converts int32 to int64
     Surface.kmt = tmask_float.astype(np.int32).sum(0).astype(np.int32)
     T[~Tsea] = np.NaN
     t1, t0 = time.time(), t1
