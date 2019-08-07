@@ -210,7 +210,7 @@ class GetTraj(object):
 
 
 def do_trajectories(traj, traj_numbers, topo, icb,
-                    xs=None, xe=None, ys=None, ye=None,
+                    xs=None, xe=None, ys=None, yn=None,
                     traj_cut=None,
                     threshold_deg=0.01, passes=50):
     t1 = time.time()
@@ -313,10 +313,10 @@ if __name__ == '__main__':
 
     if args.bounds is None:
         xs, xe = None, None
-        ys, ye = None, None
+        ys, yn = None, None
     else:
         xs, xe = args.bounds[:2]
-        ys, ye = args.bounds[2:]
+        ys, yn = args.bounds[2:]
 
     if args.ilo is not None:
         xs = args.ilo
@@ -325,7 +325,7 @@ if __name__ == '__main__':
     if args.ihi is not None:
         xe = args.ihi
     if args.jhi is not None:
-        ye = args.jhi
+        yn = args.jhi
 
     if args.globe:
         map = None
@@ -344,14 +344,14 @@ if __name__ == '__main__':
         map = Basemap(projection='npstere',boundinglat=10,lon_0=270,resolution='l')
 
 
-    topo = Topography(xs=xs, xe=xe, ys=ys, ye=ye,
+    topo = Topography(xs=xs, xe=xe, ys=ys, yn=yn,
                      domain_dir=args.domain_dir, bathymetry_file=args.bathymetry_file,
                      coordinate_file= args.coordinate_file,
                      bottom = args.bottom, map = map, globe = args.globe)
 
     if args.traj is not None:
         do_trajectories(args.traj, args.traj_numbers, topo,
-                        xs=xs, xe=xe, ys=ys, ye=ye,
+                        xs=xs, xe=xe, ys=ys, yn=yn,
                         traj_cut=args.traj_cut,
                         threshold_deg=args.threshold, passes=args.passes)
 

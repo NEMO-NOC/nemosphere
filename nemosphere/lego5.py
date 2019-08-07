@@ -139,24 +139,24 @@ def find_domain_file(domain_dir, file_list):
 
 
 class Topography(object):
-    def __init__(self, xs=None, xe=None, ys=None, ye=None,
+    def __init__(self, xs=None, xe=None, ys=None, yn=None,
                      domain_dir='.', bathymetry_file='bathy_meter.nc', coordinate_file='coordinates.nc',
                      bottom = 6000., cmap='gist_earth', topo_cbar=False, map2d = None, globe = False, zs_rat = 0.1,
                      size_in_pixels = (1000,800)):
-        # xem1, yem1 = xe - 1, ye - 1
-        xem1, yem1 = xe, ye
+        # xem1, ynm1 = xe - 1, yn - 1
+        xem1, ynm1 = xe, yn
 
         t1 = time.time()
         pathname = find_domain_file(domain_dir,[bathymetry_file, 'allmeshes.nc'])
         with Dataset(pathname) as f:
             # print(f.variables.keys())
-            dep = f.variables['Bathymetry'][ys:ye,xs:xe].astype(np.float32)
+            dep = f.variables['Bathymetry'][ys:yn,xs:xe].astype(np.float32)
 
         pathname = find_domain_file(domain_dir,['mesh_hgr.nc', 'allmeshes.nc', coordinate_file])
         with Dataset(pathname) as f:
             # print(f.variables.keys())
-            lambda_f = f.variables['glamf'][...,ys:ye,xs:xe].squeeze().astype(np.float32)
-            phi_f = f.variables['gphif'][...,ys:ye,xs:xe].squeeze().astype(np.float32)
+            lambda_f = f.variables['glamf'][...,ys:yn,xs:xe].squeeze().astype(np.float32)
+            phi_f = f.variables['gphif'][...,ys:yn,xs:xe].squeeze().astype(np.float32)
         t1, t0 = time.time(), t1
         print('%10.5f s taken to read in data\n' % (t1 - t0) )
 
@@ -320,10 +320,10 @@ if __name__ == '__main__':
 
     if args.bounds is None:
         xs, xe = None, None
-        ys, ye = None, None
+        ys, yn = None, None
     else:
         xs, xe = args.bounds[:2]
-        ys, ye = args.bounds[2:]
+        ys, yn = args.bounds[2:]
 
     if args.ilo is not None:
         xs = args.ilo
@@ -332,7 +332,7 @@ if __name__ == '__main__':
     if args.ihi is not None:
         xe = args.ihi
     if args.jhi is not None:
-        ye = args.jhi
+        yn = args.jhi
 
     if args.globe:
         map = None
@@ -351,7 +351,7 @@ if __name__ == '__main__':
         map = Basemap(projection='npstere',boundinglat=10,lon_0=270,resolution='l')
 
 
-    topo = Topography(xs=xs, xe=xe, ys=ys, ye=ye,
+    topo = Topography(xs=xs, xe=xe, ys=ys, yn=yn,
                         domain_dir=args.domain_dir, bathymetry_file=args.bathymetry_file,
                         coordinate_file= args.coordinate_file, size_in_pixels = args.size_in_pixels,
                         bottom = args.bottom, map2d = map, globe = args.globe, topo_cbar = args.topo_cbar)

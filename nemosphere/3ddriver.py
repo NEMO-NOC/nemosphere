@@ -83,7 +83,8 @@ def main():
     parser.add_argument('--surf','-s', dest='surf_file', help='file with data for 3d surface plot', default=None)
     parser.add_argument('--surf_dir', dest='surf_dir', help='directory with surf_file', default='.')
     parser.add_argument('--field','-f', dest='field', help='field for 3d surface plot', default='votemper')
-    parser.add_argument('--opacity', dest='opacity', help='opacity for 3d surface plot', default=0.7)
+    parser.add_argument('--opacity', dest='opacity', type=float, help='opacity for 3d surface plot', default=0.7)
+    parser.add_argument('--too_large_deg', dest='too_large_deg', type=float, help='specify size in deg limiting size of triangles', default=2.)
     parser.add_argument('--camera', dest='camera', help='specify camera angles', default=None)
     parser.add_argument('--levels', dest='levels', type=float, nargs= '*',
                          help='field levels for 3d surface plot', default=[0.])
@@ -97,10 +98,10 @@ def main():
 
     if args.bounds is None:
         xs, xe = None, None
-        ys, ye = None, None
+        ys, yn = None, None
     else:
         xs, xe = args.bounds[:2]
-        ys, ye = args.bounds[2:]
+        ys, yn = args.bounds[2:]
 
     if args.ilo is not None:
         xs = args.ilo
@@ -109,7 +110,7 @@ def main():
     if args.ihi is not None:
         xe = args.ihi
     if args.jhi is not None:
-        ye = args.jhi
+        yn = args.jhi
 
     if args.globe:
         map2d = None
@@ -130,7 +131,7 @@ def main():
     if args.no_display:
         options.offscreen = True
 
-    topo = lego5.Topography(xs=xs, xe=xe, ys=ys, ye=ye,
+    topo = lego5.Topography(xs=xs, xe=xe, ys=ys, yn=yn,
                      domain_dir=args.domain_dir, bathymetry_file=args.bathymetry_file,
                      coordinate_file = args.coordinate_file,
                      bottom = args.bottom, cmap = args.cmap, map2d = map2d, globe = args.globe,
@@ -138,7 +139,7 @@ def main():
 
     if args.traj is not None:
         traj.do_trajectories(args.traj, args.traj_numbers, topo, icb=args.icb,
-                        xs=xs, xe=xe, ys=ys, ye=ye,
+                        xs=xs, xe=xe, ys=ys, yn=yn,
                         traj_cut=args.traj_cut,
                         threshold_deg=args.threshold, passes=args.passes)
 
@@ -148,8 +149,8 @@ def main():
     if args.surf_file is not None:
         volume.do_vol(args.field, args.surf_file,args.levels,topo.proj,
                         coordinate_file = args.coordinate_file,
-                        xs=xs, xe=xe, ys=ys, ye=ye, domain_dir=args.domain_dir,
-                        dirname=args.surf_dir, opacity=args.opacity)
+                        xs=xs, xe=xe, ys=ys, yn=yn, domain_dir=args.domain_dir,
+                        dirname=args.surf_dir, opacity=args.opacity, too_large_deg=args.too_large_deg)
 
     scene = gcf()
 

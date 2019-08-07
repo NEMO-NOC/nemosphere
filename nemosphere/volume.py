@@ -73,19 +73,19 @@ def remove_nan_faces(faces, verts):
 @jit('void(f4[:,:], i8, f4[:,:], f4[:,:], f4[:,:,:], i4[:,:], f4, f4)',nopython=True)
 def do_ijk_to_lat_lon_height(v, nv, lat, lon, zt, kmt, rnx, rny):
 
-    epsilon = 1.e-10
+    # epsilon = 1.e-10
 
     for n in range(nv):
         if np.isnan(v[n,0])  or np.isnan(v[n,1]) or np.isnan(v[n,2]):
             v[n,0], v[n,1], v[n,2] = np.NaN, np.NaN, np.NaN
         else:
-            rk, rj, ri = v[n,0] - epsilon, v[n,1] - epsilon, v[n,2] - epsilon
+            # rk, rj, ri = v[n,0] - epsilon, v[n,1] - epsilon, v[n,2] - epsilon
+            rk, rj, ri = v[n,0], v[n,1], v[n,2]
             k, j, i = int(rk), int(rj), int(ri)
             #if ri> rnx-2. or rj > rny-2.:
             if ri>= rnx-1. or rj >= rny-1.:
                 v[n,0], v[n,1], v[n,2] = np.NaN, np.NaN, np.NaN
             elif rk > float(min(kmt[j,i], kmt[j+1,i+1], kmt[j+1,i], kmt[j,i+1])-1):
-                #keep[n] = False
                 v[n,0], v[n,1], v[n,2] = np.NaN, np.NaN, np.NaN
             else:
                 dk, dj, di = rk - float(k), rj - float(j), ri - float(i)
@@ -187,7 +187,7 @@ def stripmask(variable):
         return variable
 
 def do_vol(vble, fname, values, proj,
-           xs=None, xe=None, ys=None, ye=None, domain_dir='.',
+           xs=None, xe=None, ys=None, yn=None, domain_dir='.',
            coordinate_file = 'coordinates.nc',
            dirname='.',tlevel=0, too_large_deg=2., opacity=1.0):
     t1 = time.time()
@@ -207,17 +207,19 @@ def do_vol(vble, fname, values, proj,
             xe = nxm
         if ys is None:
             ys = 0
-        if ye is None:
-            ye = nym
+        if yn is None:
+            yn = nym
 
         print(Nd.shape)
-        tmask_float = Nd[0,:,ys:ye,xs:xe]
-        Tsea = tmask_float.astype(np.bool)
-        nz, ny, nx = Tsea.shape
+        tmask = Nd[0,:,ys:yn,xs:xe]
 
     if get_wrap(nx=xe) == 'fullwrap':
         print('correcting sea mask')
-        Tsea[:,:,-1] = Tsea[:,:,0]
+        tmask[:,:,-1] = tmask[:,:,0]
+
+    Tsea = tmask.astype(np.bool)
+    nz, ny, nx = Tsea.shape
+
 
     pathname = pjoin(dirname, fname)
     if not os.path.exists(pathname):
@@ -230,12 +232,12 @@ def do_vol(vble, fname, values, proj,
                 Nd = get_varNd(component, f)
                 nz, nys, nxs = Nd.shape[-3:]
                 if ys > 0 and xs > 0:
-                    velocity[component][:,:,:] = stripmask(Nd[tlevel,:,ys-1:ye,xs-1:xe]).astype(np.float32)
+                    velocity[component][:,:,:] = stripmask(Nd[tlevel,:,ys-1:yn,xs-1:xe]).astype(np.float32)
                 else:
                     velocity[component] = np.empty([nz, ny+1, nx+1],dtype=np.float32)
-                    velocity[component][:,1:,1:] = stripmask(Nd[tlevel,:,ys:ye,xs:xe]).astype(np.float32)
+                    velocity[component][:,1:,1:] = stripmask(Nd[tlevel,:,ys:yn,xs:xe]).astype(np.float32)
                     if get_wrap(nx=nxs) == 'fullcore':
-                        velocity[component][:,:,0] = stripmask(Nd[tlevel,:,ys:ye,-1]).astype(np.float32)
+                        velocity[component][:,:,0] = stripmask(Nd[tlevel,:,ys:yn,-1]).astype(np.float32)
                     else:
                         velocity[component][:,0,1:] = velocity[component][:,1,1:]
 
@@ -252,7 +254,7 @@ def do_vol(vble, fname, values, proj,
         TS = {}
         with Dataset(pathname) as f:
             for act_vble in ('theta', 'S'):
-                TS[act_vble] =  get_varNd(act_vble, f)[tlevel,:,ys:ye,xs:xe].astype(np.float32)
+                TS[act_vble] =  get_varNd(act_vble, f)[tlevel,:,ys:yn,xs:xe].astype(np.float32)
                 TS[act_vble] = stripmask(TS[act_vble])
         #di, dj = 0, 0
     else:
@@ -266,7 +268,7 @@ def do_vol(vble, fname, values, proj,
             if (ny, nx) != (nym, nxm):
                 sys.exit('Dataset %s has different shape %5i %5i to mask file %5i %5i' %
                          (vble, ny, nx, nym, nxm))
-            T = stripmask(Nd[tlevel,:,ys:ye,xs:xe]).astype(np.float32)
+            T = stripmask(Nd[tlevel,:,ys:yn,xs:xe]).astype(np.float32)
 
     if 'sigma' in vble:
         print('sigma found again')
@@ -282,8 +284,8 @@ def do_vol(vble, fname, values, proj,
     pathname = find_domain_file(domain_dir,['mesh_hgr.nc', 'allmeshes.nc', coordinate_file])
     with Dataset(pathname) as f:
         fv = f.variables
-        Surface.lat = fv['gphit'][0,ys:ye,xs:xe].astype(np.float32)
-        Surface.lon = fv['glamt'][0,ys:ye,xs:xe].astype(np.float32)
+        Surface.lat = fv['gphit'][0,ys:yn,xs:xe].astype(np.float32)
+        Surface.lon = fv['glamt'][0,ys:yn,xs:xe].astype(np.float32)
 
     pathname = find_domain_file(domain_dir,['mesh_zgr.nc', 'allmeshes.nc', coordinate_file])
     with Dataset(pathname) as f:
@@ -291,18 +293,19 @@ def do_vol(vble, fname, values, proj,
         vbles = list(fv.keys())
         if 'gdept' in vbles:
             dNd = fv['gdept']
-            Surface.height = -dNd[0,:,ys:ye,xs:xe].astype(np.float32)
+            Surface.height = -dNd[0,:,ys:yn,xs:xe].astype(np.float32)
         elif 'gdept_0' in vbles:
             dNd = fv['gdept_0']
             if len(dNd.shape) == 2:
                 gdept_0 = dNd[0,:].astype(np.float32)
-                Surface.height = np.tile(gdept_0, Tsea.shape + (1,))
+                Surface.height = np.tile(gdept_0, (1,) + Tsea.shape)
             elif len(dNd.shape) == 4:
-                Surface.height = -dNd[0,:,ys:ye,xs:xe].astype(np.float32)
+                Surface.height = -dNd[0,:,ys:yn,xs:xe].astype(np.float32)
 
 
 #   Feature/bug of numpy that sum converts int32 to int64
-    Surface.kmt = tmask_float.astype(np.int32).sum(0).astype(np.int32)
+    Surface.kmt = tmask.astype(np.int32).sum(0).astype(np.int32)
+    T[:,:,-1] = T[:,:,0]
     T[~Tsea] = np.NaN
     t1, t0 = time.time(), t1
 
@@ -310,12 +313,19 @@ def do_vol(vble, fname, values, proj,
 
     Surface.T = T
     print ('Surface.T has shape', Surface.T.shape)
-    print('ys, ye=',ys, ye,' xs, xe=',xs, xe)
+    print('ys, yn=',ys, yn,' xs, xe=',xs, xe)
     Surface.proj = proj
     Surface.di = 0. #di
     Surface.dj = 0. #dj
     Surface.opacity = opacity
     Surface.too_large = 6e6*(np.pi/180.)*too_large_deg
+
+    ymid = (ys + yn) //2
+    print('kmt0=', Surface.kmt[ymid,0], 'kmt-2-1=', Surface.kmt[ymid,-2:])
+    print('lon0=', Surface.lon[ymid,0], 'lon-2-1=', Surface.lon[ymid,-2:])
+    print('lat0=', Surface.lat[ymid,0], 'lat-2-1=', Surface.lat[ymid,-2:])
+    print('z0=', Surface.height[30,ymid,0], 'z-2-1=', Surface.height[30,ymid,-2:])
+    print('T0=', Surface.T[30,ymid,0], 'T-2-1=', Surface.T[30,ymid,-2:])
 
     processes = max(cpu_count() - 2,1)
     sys.stdout.flush()
