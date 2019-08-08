@@ -83,9 +83,9 @@ def do_ijk_to_lat_lon_height(v, nv, lat, lon, zt, kmt, rnx, rny):
             rk, rj, ri = v[n,0], v[n,1], v[n,2]
             k, j, i = int(rk), int(rj), int(ri)
             #if ri> rnx-2. or rj > rny-2.:
-            if ri>= rnx-1. or rj >= rny-1.:
-                v[n,0], v[n,1], v[n,2] = np.NaN, np.NaN, np.NaN
-            elif rk > float(min(kmt[j,i], kmt[j+1,i+1], kmt[j+1,i], kmt[j,i+1])-1):
+            #if ri>= rnx-1. or rj >= rny-1.:
+            #    v[n,0], v[n,1], v[n,2] = np.NaN, np.NaN, np.NaN
+            if rk > float(min(kmt[j,i], kmt[j+1,i+1], kmt[j+1,i], kmt[j,i+1])-1):
                 v[n,0], v[n,1], v[n,2] = np.NaN, np.NaN, np.NaN
             else:
                 dk, dj, di = rk - float(k), rj - float(j), ri - float(i)
@@ -211,7 +211,7 @@ def do_vol(vble, fname, values, proj,
             yn = nym
 
         print(Nd.shape)
-        tmask = Nd[0,:,ys:yn,xs:xe]
+        tmask = stripmask(Nd[0,:,ys:yn,xs:xe])
 
     if get_wrap(nx=xe) == 'fullwrap':
         print('correcting sea mask')
@@ -284,8 +284,8 @@ def do_vol(vble, fname, values, proj,
     pathname = find_domain_file(domain_dir,['mesh_hgr.nc', 'allmeshes.nc', coordinate_file])
     with Dataset(pathname) as f:
         fv = f.variables
-        Surface.lat = fv['gphit'][0,ys:yn,xs:xe].astype(np.float32)
-        Surface.lon = fv['glamt'][0,ys:yn,xs:xe].astype(np.float32)
+        Surface.lat = stripmask(fv['gphit'][0,ys:yn,xs:xe]).astype(np.float32)
+        Surface.lon = stripmask(fv['glamt'][0,ys:yn,xs:xe]).astype(np.float32)
 
     pathname = find_domain_file(domain_dir,['mesh_zgr.nc', 'allmeshes.nc', coordinate_file])
     with Dataset(pathname) as f:
@@ -293,14 +293,14 @@ def do_vol(vble, fname, values, proj,
         vbles = list(fv.keys())
         if 'gdept' in vbles:
             dNd = fv['gdept']
-            Surface.height = -dNd[0,:,ys:yn,xs:xe].astype(np.float32)
+            Surface.height = -stripmask(dNd[0,:,ys:yn,xs:xe]).astype(np.float32)
         elif 'gdept_0' in vbles:
             dNd = fv['gdept_0']
             if len(dNd.shape) == 2:
-                gdept_0 = dNd[0,:].astype(np.float32)
+                gdept_0 = stripmask(dNd[0,:]).astype(np.float32)
                 Surface.height = np.tile(gdept_0, (1,) + Tsea.shape)
             elif len(dNd.shape) == 4:
-                Surface.height = -dNd[0,:,ys:yn,xs:xe].astype(np.float32)
+                Surface.height = -stripmask(dNd[0,:,ys:yn,xs:xe]).astype(np.float32)
 
 
 #   Feature/bug of numpy that sum converts int32 to int64
@@ -320,7 +320,7 @@ def do_vol(vble, fname, values, proj,
     Surface.opacity = opacity
     Surface.too_large = 6e6*(np.pi/180.)*too_large_deg
 
-    ymid = (ys + yn) //2
+    ymid = (ys + yn) // 2
     print('kmt0=', Surface.kmt[ymid,0], 'kmt-2-1=', Surface.kmt[ymid,-2:])
     print('lon0=', Surface.lon[ymid,0], 'lon-2-1=', Surface.lon[ymid,-2:])
     print('lat0=', Surface.lat[ymid,0], 'lat-2-1=', Surface.lat[ymid,-2:])
