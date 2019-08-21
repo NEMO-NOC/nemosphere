@@ -70,8 +70,8 @@ def remove_nan_faces(faces, verts):
     faces = np.compress(keep_face,faces, axis=0)
     return faces
 
-@jit('void(f4[:,:], i8, f4[:,:], f4[:,:], f4[:,:,:], i4[:,:], f4, f4)',nopython=True)
-def do_ijk_to_lat_lon_height(v, nv, lat, lon, zt, kmt, rnx, rny):
+@jit('void(f4[:,:], i8, f4[:,:], f4[:,:], f4[:,:,:], i4[:,:], i8, i8, i8)',nopython=True)
+def do_ijk_to_lat_lon_height(v, nv, lat, lon, zt, kmt, nzm2, nym2, nxm2):
 
     # epsilon = 1.e-10
 
@@ -81,7 +81,7 @@ def do_ijk_to_lat_lon_height(v, nv, lat, lon, zt, kmt, rnx, rny):
         else:
             # rk, rj, ri = v[n,0] - epsilon, v[n,1] - epsilon, v[n,2] - epsilon
             rk, rj, ri = v[n,0], v[n,1], v[n,2]
-            k, j, i = int(rk), int(rj), int(ri)
+            k, j, i = max(0,min(int(rk),nzm2)), max(0,min(int(rj),nym2)), max(0,min(int(ri),nxm2))
             # #if ri> rnx-2. or rj > rny-2.:
             # if ri>= rnx-1. or rj >= rny-1.:
             #     v[n,0], v[n,1], v[n,2] = np.NaN, np.NaN, np.NaN
@@ -89,17 +89,19 @@ def do_ijk_to_lat_lon_height(v, nv, lat, lon, zt, kmt, rnx, rny):
             #     v[n,0], v[n,1], v[n,2] = np.NaN, np.NaN, np.NaN
             # else:
             dk, dj, di = rk - float(k), rj - float(j), ri - float(i)
-            v[n,0] = zt[k, j, i]*(1. - dk) + zt[k+1, j, i]*dk
-            v[n,1] = lat[j,i]*(1. - dj)*(1. - di) + lat[j+1,i]*dj*(1. - di) + \
-                lat[j,i+1]*(1. - dj)*di + lat[j+1,i+1]*dj*di
-            v[n,2] = lon[j,i]*(1. - dj)*(1. - di) + lon[j+1,i]*dj*(1. - di) + \
-                lon[j,i+1]*(1. - dj)*di + lon[j+1,i+1]*dj*di
+            if dj > 1.:
+                v[n,0], v[n,1], v[n,2] = np.NaN, np.NaN, np.NaN
+            else:
+                v[n,0] = zt[k, j, i]*(1. - dk) + zt[k+1, j, i]*dk
+                v[n,1] = lat[j,i]*(1. - dj)*(1. - di) + lat[j+1,i]*dj*(1. - di) + \
+                  lat[j,i+1]*(1. - dj)*di + lat[j+1,i+1]*dj*di
+                v[n,2] = lon[j,i]*(1. - dj)*(1. - di) + lon[j+1,i]*dj*(1. - di) + \
+                  lon[j,i+1]*(1. - dj)*di + lon[j+1,i+1]*dj*di
 
 def ijk_to_lat_lon_height(v, lat, lon, zt, kmt):
-    ny, nx = kmt.shape
-    rny, rnx = np.float32(ny), np.float32(nx)
+    nzm2, nym2, nxm2 = [zt.shape[i] - 2 for i in range(3)]
     nv, _ = v.shape
-    do_ijk_to_lat_lon_height(v, nv, lat, lon, zt, kmt, rnx, rny)
+    do_ijk_to_lat_lon_height(v, nv, lat, lon, zt, kmt, nzm2, nym2, nxm2)
 
 class Surface():
     pass
@@ -278,7 +280,7 @@ def do_vol(vble, fname, values, proj,
             for act_vble in ('theta', 'S'):
                 TS[act_vble] =  get_varNd(act_vble, f)[tlevel,:,ys:yn,xs:xe].astype(np.float32)
                 TS[act_vble] = stripmask(TS[act_vble])
-                (TS[act_vble] > 50.) = 0.
+            TS[act_vble][TS[act_vble] > 50.] = 0.
         #di, dj = 0, 0
     else:
         if xs is None:
@@ -298,7 +300,15 @@ def do_vol(vble, fname, values, proj,
         p = gsw.p_from_z(Surface.height, Surface.lat)
         SA = gsw.SA_from_SP( TS['S'], p, Surface.lon, Surface.lat)
         CT = gsw.CT_from_t(SA, TS['theta'], p)
-        T = gsw.density.sigma4(SA,CT)
+        ref_depth_km = int(vble[-1])
+        if ref_depth_km==4:
+            T = gsw.density.sigma4(SA,CT)
+        elif ref_depth_km==1:
+            T = gsw.density.sigma1(SA,CT)
+        elif ref_depth_km==2:
+            T = gsw.density.sigma1(SA,CT)
+        else:
+            T = gsw.density.sigma0(SA,CT)
         # if TS['theta'].dtype == np.float64:
         #     sigma = nemo_rho.eos.sigma_n8
         # else:
