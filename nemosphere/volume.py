@@ -82,18 +82,18 @@ def do_ijk_to_lat_lon_height(v, nv, lat, lon, zt, kmt, rnx, rny):
             # rk, rj, ri = v[n,0] - epsilon, v[n,1] - epsilon, v[n,2] - epsilon
             rk, rj, ri = v[n,0], v[n,1], v[n,2]
             k, j, i = int(rk), int(rj), int(ri)
-            #if ri> rnx-2. or rj > rny-2.:
-            #if ri>= rnx-1. or rj >= rny-1.:
-            #    v[n,0], v[n,1], v[n,2] = np.NaN, np.NaN, np.NaN
-            if rk > float(min(kmt[j,i], kmt[j+1,i+1], kmt[j+1,i], kmt[j,i+1])-1):
-                v[n,0], v[n,1], v[n,2] = np.NaN, np.NaN, np.NaN
-            else:
-                dk, dj, di = rk - float(k), rj - float(j), ri - float(i)
-                v[n,0] = zt[k, j, i]*(1. - dk) + zt[k+1, j, i]*dk
-                v[n,1] = lat[j,i]*(1. - dj)*(1. - di) + lat[j+1,i]*dj*(1. - di) + \
-                    lat[j,i+1]*(1. - dj)*di + lat[j+1,i+1]*dj*di
-                v[n,2] = lon[j,i]*(1. - dj)*(1. - di) + lon[j+1,i]*dj*(1. - di) + \
-                    lon[j,i+1]*(1. - dj)*di + lon[j+1,i+1]*dj*di
+            # #if ri> rnx-2. or rj > rny-2.:
+            # if ri>= rnx-1. or rj >= rny-1.:
+            #     v[n,0], v[n,1], v[n,2] = np.NaN, np.NaN, np.NaN
+            # elif rk > float(min(kmt[j,i], kmt[j+1,i+1], kmt[j+1,i], kmt[j,i+1])-1):
+            #     v[n,0], v[n,1], v[n,2] = np.NaN, np.NaN, np.NaN
+            # else:
+            dk, dj, di = rk - float(k), rj - float(j), ri - float(i)
+            v[n,0] = zt[k, j, i]*(1. - dk) + zt[k+1, j, i]*dk
+            v[n,1] = lat[j,i]*(1. - dj)*(1. - di) + lat[j+1,i]*dj*(1. - di) + \
+                lat[j,i+1]*(1. - dj)*di + lat[j+1,i+1]*dj*di
+            v[n,2] = lon[j,i]*(1. - dj)*(1. - di) + lon[j+1,i]*dj*(1. - di) + \
+                lon[j,i+1]*(1. - dj)*di + lon[j+1,i+1]*dj*di
 
 def ijk_to_lat_lon_height(v, lat, lon, zt, kmt):
     ny, nx = kmt.shape
