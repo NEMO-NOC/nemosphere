@@ -15,7 +15,7 @@ import warnings
 
 from mayavi import mlab
 
-import nemo_rho
+import gsw
 from .lego5 import find_domain_file
 
 
@@ -221,6 +221,28 @@ def do_vol(vble, fname, values, proj,
     nz, ny, nx = Tsea.shape
 
 
+    pathname = find_domain_file(domain_dir,['mesh_hgr.nc', 'allmeshes.nc', coordinate_file])
+    with Dataset(pathname) as f:
+        fv = f.variables
+        Surface.lat = stripmask(fv['gphit'][0,ys:yn,xs:xe]).astype(np.float32)
+        Surface.lon = stripmask(fv['glamt'][0,ys:yn,xs:xe]).astype(np.float32)
+
+    pathname = find_domain_file(domain_dir,['mesh_zgr.nc', 'allmeshes.nc', coordinate_file])
+    with Dataset(pathname) as f:
+        fv = f.variables
+        vbles = list(fv.keys())
+        if 'gdept' in vbles:
+            dNd = fv['gdept']
+            Surface.height = -stripmask(dNd[0,:,ys:yn,xs:xe]).astype(np.float32)
+        elif 'gdept_0' in vbles:
+            dNd = fv['gdept_0']
+            if len(dNd.shape) == 2:
+                gdept_0 = stripmask(dNd[0,:]).astype(np.float32)
+                Surface.height = np.tile(gdept_0, (1,) + Tsea.shape)
+            elif len(dNd.shape) == 4:
+                Surface.height = -stripmask(dNd[0,:,ys:yn,xs:xe]).astype(np.float32)
+
+
     pathname = pjoin(dirname, fname)
     if not os.path.exists(pathname):
         sys.exit('cannot find file %s' % pathname )
@@ -256,6 +278,7 @@ def do_vol(vble, fname, values, proj,
             for act_vble in ('theta', 'S'):
                 TS[act_vble] =  get_varNd(act_vble, f)[tlevel,:,ys:yn,xs:xe].astype(np.float32)
                 TS[act_vble] = stripmask(TS[act_vble])
+                (TS[act_vble] > 50.) = 0.
         #di, dj = 0, 0
     else:
         if xs is None:
@@ -272,36 +295,18 @@ def do_vol(vble, fname, values, proj,
 
     if 'sigma' in vble:
         print('sigma found again')
-        if TS['theta'].dtype == np.float64:
-            sigma = nemo_rho.eos.sigma_n8
-        else:
-            sigma = nemo_rho.eos.sigma_n4
-        ref_depth_km = float(vble[-1])
-        neos = 0
-        T = sigma(1.e20, ~Tsea.ravel(), TS['theta'].ravel(),
-                        TS['S'].ravel(), ref_depth_km, neos ).reshape(Tsea.shape)
-
-    pathname = find_domain_file(domain_dir,['mesh_hgr.nc', 'allmeshes.nc', coordinate_file])
-    with Dataset(pathname) as f:
-        fv = f.variables
-        Surface.lat = stripmask(fv['gphit'][0,ys:yn,xs:xe]).astype(np.float32)
-        Surface.lon = stripmask(fv['glamt'][0,ys:yn,xs:xe]).astype(np.float32)
-
-    pathname = find_domain_file(domain_dir,['mesh_zgr.nc', 'allmeshes.nc', coordinate_file])
-    with Dataset(pathname) as f:
-        fv = f.variables
-        vbles = list(fv.keys())
-        if 'gdept' in vbles:
-            dNd = fv['gdept']
-            Surface.height = -stripmask(dNd[0,:,ys:yn,xs:xe]).astype(np.float32)
-        elif 'gdept_0' in vbles:
-            dNd = fv['gdept_0']
-            if len(dNd.shape) == 2:
-                gdept_0 = stripmask(dNd[0,:]).astype(np.float32)
-                Surface.height = np.tile(gdept_0, (1,) + Tsea.shape)
-            elif len(dNd.shape) == 4:
-                Surface.height = -stripmask(dNd[0,:,ys:yn,xs:xe]).astype(np.float32)
-
+        p = gsw.p_from_z(Surface.height, Surface.lat)
+        SA = gsw.SA_from_SP( TS['S'], p, Surface.lon, Surface.lat)
+        CT = gsw.CT_from_t(SA, TS['theta'], p)
+        T = gsw.density.sigma4(SA,CT)
+        # if TS['theta'].dtype == np.float64:
+        #     sigma = nemo_rho.eos.sigma_n8
+        # else:
+        #     sigma = nemo_rho.eos.sigma_n4
+        # ref_depth_km = float(vble[-1])
+        # neos = 0
+        # T = sigma(1.e20, ~Tsea.ravel(), TS['theta'].ravel(),
+        #                 TS['S'].ravel(), ref_depth_km, neos ).reshape(Tsea.shape)
 
 #   Feature/bug of numpy that sum converts int32 to int64
     Surface.kmt = tmask.astype(np.int32).sum(0).astype(np.int32)
