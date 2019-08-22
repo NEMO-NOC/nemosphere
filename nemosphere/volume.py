@@ -280,7 +280,7 @@ def do_vol(vble, fname, values, proj,
             for act_vble in ('theta', 'S'):
                 TS[act_vble] =  get_varNd(act_vble, f)[tlevel,:,ys:yn,xs:xe].astype(np.float32)
                 TS[act_vble] = stripmask(TS[act_vble])
-            TS[act_vble][TS[act_vble] > 50.] = 0.
+            #TS[act_vble][TS[act_vble] > 50.] = 0.
         #di, dj = 0, 0
     else:
         if xs is None:
