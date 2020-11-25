@@ -170,8 +170,8 @@ def get_wrap(nx=None, ny=None):
         return 'part'
 
 def get_varNd(variable,f):
-    vardict = {'theta':['potemp', 'votemper'],
-               'S':['vosaline', 'salin'],
+    vardict = {'theta':['potemp', 'votemper','thetao'],
+               'S':['vosaline', 'salin','so'],
                'U':['vozocrtx', 'uo'],
                'V':['vomerty', 'vo']}
     # if variable not a key of vardict, just return as is
@@ -268,7 +268,7 @@ def do_vol(vble, fname, values, proj,
         # average onto T points
         T = .5*np.sqrt( (velocity['U'][:,1:,:-1] + velocity['U'][:,1:,1:])**2 +
                           (velocity['V'][:,:-1,1:] + velocity['V'][:,1:,1:])**2 )
-    elif 'sigma' in vble:
+    elif 'sigma' in vble or 'TS' in vble:
         if xs is None:
             xs=1
         if ys is None:
@@ -280,7 +280,7 @@ def do_vol(vble, fname, values, proj,
             for act_vble in ('theta', 'S'):
                 TS[act_vble] =  get_varNd(act_vble, f)[tlevel,:,ys:yn,xs:xe].astype(np.float32)
                 TS[act_vble] = stripmask(TS[act_vble])
-            TS[act_vble][TS[act_vble] > 50.] = 0.
+                TS[act_vble][TS[act_vble] > 50.] = 0.
         #di, dj = 0, 0
     else:
         if xs is None:
@@ -317,7 +317,10 @@ def do_vol(vble, fname, values, proj,
         # neos = 0
         # T = sigma(1.e20, ~Tsea.ravel(), TS['theta'].ravel(),
         #                 TS['S'].ravel(), ref_depth_km, neos ).reshape(Tsea.shape)
-
+    if 'TS' in vble:
+        tscale2 = 1./16.; sscale1 = 1.
+        T0, S0 = [float(x) for x in vble.split('_')[-2:,]]
+        T = tscale2*(TS['T'] - T0)**2 + sscale2*(TS['S'] - S0)**2
 #   Feature/bug of numpy that sum converts int32 to int64
     Surface.kmt = tmask.astype(np.int32).sum(0).astype(np.int32)
     T[:,:,-1] = T[:,:,0]
